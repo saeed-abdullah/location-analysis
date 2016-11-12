@@ -238,7 +238,8 @@ def generate_daily_nodes(df, hash_c='geo_hash',
         tz = d.tz  # timezone information
 
         # maximum date + 1
-        end_date = pd.to_datetime(d.date()).tz_localize(tz) + pd.to_timedelta('1D')
+        end_date = pd.to_datetime(d.date()).tz_localize(tz)
+        end_date = end_date + pd.to_timedelta('1D')
 
     # shifting start of the day
     if shift_day_start is not None:
@@ -327,7 +328,8 @@ def generate_nodes(locations,
         if len(t) < valid_interval_th:
             s.append({'node': np.nan, 'time': intervals[index]})
         else:
-            s.append({'node': get_primary_location(t), 'time': intervals[index]})
+            s.append({'node': get_primary_location(t),
+                      'time': intervals[index]})
 
     return pd.DataFrame(s)
 
@@ -366,6 +368,7 @@ def generate_graph(nodes):
                 l.append(edge_format.format(x1, x2))
 
     return l
+
 
 def get_geo_center(df, lat_c='latitude', lon_c='longitude'):
     """
@@ -570,6 +573,7 @@ def merge_neighboring_grid(geo_hash):
                     del c[n]  # merged with grid z
 
     return geo_hash.map(d)
+
 
 def get_stay_region(df, stay_point_c='stay_point',
                     lat_c='latitude', lon_c='longitude',
