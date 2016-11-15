@@ -9,12 +9,40 @@
 
 """
 
+import geopy
 import pandas as pd
 import numpy as np
 import pytest
 from pytest import approx
 
 from location import motif
+
+
+def get_nearby_point(lon, lat, dist_m, bearing=0):
+    """
+   Generates a nearby point with given distance and bearing.
+
+   Parameters
+   ----------
+   lon: float
+       Longitude of the origin.
+   lat: float
+       Latitude of the origin.
+   dist_m: float
+       Distance in meters
+   bearing: float
+       Bearing in degrees.
+
+
+   Returns
+   -------
+   p: geopy.Point
+       A point with given distance and bearing from the origin.
+    """
+
+    origin = geopy.Point(longitude=lon, latitude=lat)
+    dist = geopy.distance.GreatCircleDistance(meters=dist_m)
+    return dist.destination(origin, bearing=bearing)
 
 
 def test_compute_geo_hash():
