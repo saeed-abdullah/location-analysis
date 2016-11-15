@@ -110,8 +110,7 @@ def filter_out_rare_points(points, threshold_pct=0.5):
     return l
 
 
-def get_primary_location(locations, aggr_f='count',
-                         geo_hash_c='geo_hash'):
+def get_primary_location(locations, aggr_f='count'):
     """
     Gets the primary location.
 
@@ -137,8 +136,6 @@ def get_primary_location(locations, aggr_f='count',
         recorded is a good approximation of the time
         spent by a user.
 
-    geo_hash_c : str
-        Column name that contains geo hash values.
 
     Parameters
     ----------
