@@ -13,7 +13,7 @@ import math
 
 # install anvil from https://github.com/saeed-abdullah/Anvil
 import anvil
-import geopy
+from geopy import distance, point
 import geohash
 import pandas as pd
 import numpy as np
@@ -480,17 +480,17 @@ def get_stay_point(df, lat_c='latitude',
         # time diff between current and first members
         time_diff = pd.to_timedelta('0s')
 
-        p_f = geopy.point.Point(latitude=df.iloc[index][lat_c],
-                                longitude=df.iloc[index][lon_c])
+        p_f = point.Point(latitude=df.iloc[index][lat_c],
+                          longitude=df.iloc[index][lon_c])
 
         time_f = df.index[index]
 
         j = index + 1
         while j < max_len:
-            p_s = geopy.point.Point(latitude=df.iloc[j][lat_c],
-                                    longitude=df.iloc[j][lon_c])
+            p_s = point.Point(latitude=df.iloc[j][lat_c],
+                              longitude=df.iloc[j][lon_c])
 
-            d = geopy.distance.GreatCircleDistance(p_f, p_s).m
+            d = distance.GreatCircleDistance(p_f, p_s).m
             if d <= dist_th:
                 mem_c += 1  # new member
                 time_diff = df.index[j] - time_f  # update total time spent
