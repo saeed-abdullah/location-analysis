@@ -118,9 +118,40 @@ def test_get_geo_center():
     assert d['longitude'] == approx(-177.9916)
 
 
-@pytest.mark.xfail
 def test_get_stay_point():
-    raise NotImplementedError
+    coords = [(-76.48327, 42.44701),  # origin
+              # within 200m radius from origin
+              (-76.48443561343255, 42.448589090744434),
+              (-76.48560525440746, 42.44752375175882),
+              # new origin which is 400m away
+              (-76.48713118353778, 42.44920446354337),
+              # within 300m block from new origin
+              (-76.49037416236197, 42.44795997470675),
+              (-76.48985180197955, 42.44740312340601)]
+
+    start = pd.to_datetime('2016-11-16 14:00:00')
+    time = pd.date_range(start, periods=len(coords), freq='15min')
+
+    l = []
+    for c, t in zip(coords, time):
+        l.append({'latitude': c[1], 'longitude': c[0], 'time': t})
+
+    df = pd.DataFrame(l)
+    df = df.set_index('time').sort_index()
+
+    stay_points = motif.get_stay_point(df)
+    expected = [0, 0, 0, 1, 1, 1]
+    assert stay_points == expected
+
+    # smaller distance threshold
+    stay_points = motif.get_stay_point(df, dist_th=200)
+    expected = [0, 0, 0, np.nan, np.nan, np.nan]
+    assert stay_points == expected
+
+    # different time threshold
+    stay_points = motif.get_stay_point(df, time_th='31min')
+    expected = [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan]
+    assert stay_points == expected
 
 
 @pytest.mark.xfail
