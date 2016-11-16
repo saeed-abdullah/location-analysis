@@ -154,9 +154,41 @@ def test_get_stay_point():
     assert stay_points == expected
 
 
-@pytest.mark.xfail
 def test_merge_neighboring_grid():
-    raise NotImplementedError
+
+    #
+    # +-------+--------+--------+
+    # | 9q8x  |   9q8z |  9q9p  |
+    # |       |        |        |
+    # +-------------------------+
+    # | 9q8w  |   9q8y |  9q9n  |
+    # |       |        |        |
+    # +-------------------------+
+    # | 9q8t  |   9q8v |  9q9j  |
+    # |       |        |        |
+    # +-------+--------+--------+
+    #
+
+    # the center grid (9q8y) is the most common
+    # so all the grid will have same geohash
+    h = pd.Series(['9q8y', '9q8y', '9q8x', '9q8t'])
+
+    actual = motif.merge_neighboring_grid(h)
+    expected = ['9q8y'] * len(h)
+
+    assert np.all(expected == actual)
+
+    # sometimes the greedy approach does not result in
+    # most optimum solution. For example, if we
+    # start from a corner, we will get two merged
+    # grid instead of one.
+
+    h = h.append(pd.Series(['9q8t'] * 2))
+
+    actual = motif.merge_neighboring_grid(h)
+    expected = ['9q8t', '9q8t', '9q8x', '9q8t', '9q8t', '9q8t']
+
+    assert np.all(expected == actual)
 
 
 @pytest.mark.xfail
