@@ -191,6 +191,41 @@ def test_merge_neighboring_grid():
     assert all(expected == actual)
 
 
-@pytest.mark.xfail
 def test_get_stay_region():
-    raise NotImplementedError
+
+    coords = [(-122.52065742012005, 37.707623920764846),  # in 9q8y
+              (-122.51778693308258, 37.70276073065426),
+              (-122.51919726220027, 37.70776235552409),
+              (-122.17130080126853, 37.529837604742944),  # in 9q9j
+              (-122.16544209504582, 37.53110242860379),
+              (-122.87447180947525, 37.52898358762108),  # in 9q8t
+              (-122.87446635765954, 37.528948605061274)]
+
+    # reflects the grids
+    stay_point = [0, 0, 0, 1, 1, 2, 2]
+
+    l = []
+    for c, s in zip(coords, stay_point):
+        l.append({'lon': c[0], 'lat': c[1], 'stay_point': s})
+
+    df = pd.DataFrame(l)
+    actual = motif.get_stay_region(df, lat_c='lat',
+                                   lon_c='lon', precision=4)
+    expected = ['9q8y'] * len(coords)
+    assert all(actual == expected)
+
+    # add more points to 9q8t so that the merging starts
+    # from there. It will result in two regions
+    df = df.append({'lon': -122.87401872818019,
+                    'lat': 37.527920601182295,
+                    'stay_point': 2}, ignore_index=True)
+    df = df.append({'lon': -122.87396151226133,
+                    'lat': 37.53074696993352,
+                    'stay_point': 2}, ignore_index=True)
+
+    actual = motif.get_stay_region(df, lat_c='lat',
+                                   lon_c='lon', precision=4)
+    # see the grids in test_get_stay_point`
+    expected = ['9q8t', '9q8t', '9q8t', '9q9j', '9q9j',
+                '9q8t', '9q8t', '9q8t', '9q8t']
+    assert all(actual == expected)
