@@ -176,7 +176,7 @@ def test_merge_neighboring_grid():
     actual = motif.merge_neighboring_grid(h)
     expected = ['9q8y'] * len(h)
 
-    assert np.all(expected == actual)
+    assert all(expected == actual)
 
     # sometimes the greedy approach does not result in
     # most optimum solution. For example, if we
@@ -188,7 +188,7 @@ def test_merge_neighboring_grid():
     actual = motif.merge_neighboring_grid(h)
     expected = ['9q8t', '9q8t', '9q8x', '9q8t', '9q8t', '9q8t']
 
-    assert np.all(expected == actual)
+    assert all(expected == actual)
 
 
 @pytest.mark.xfail
