@@ -97,9 +97,54 @@ def test_generate_daily_nodes():
     raise NotImplementedError
 
 
-@pytest.mark.xfail
 def test_generate_nodes():
-    raise NotImplementedError
+    # hash
+    h = list(range(48))
+    start = pd.to_datetime('2016-11-16 14:00')
+    t = pd.date_range(start, periods=len(h), freq='30min')
+    series = pd.Series(h, index=t)
+
+    actual = motif.generate_nodes(series, start_time=start)
+    expected = pd.DataFrame({'time': t, 'node': h})
+    assert actual.equals(expected)
+
+    # higher threshold for record numbers
+    actual = motif.generate_nodes(series, start_time=start,
+                                  valid_interval_th=2)
+    expected = pd.DataFrame({'node': [np.nan] * len(h), 'time': t})
+    assert actual.equals(expected)
+
+    # end_time
+    end = start + pd.to_timedelta('2D')
+    actual = motif.generate_nodes(series, start_time=start,
+                                  end_time=end)
+    t = pd.date_range(start, periods=len(h) * 2, freq='30min')
+    # the second half should be nan
+    expected = pd.DataFrame({'node': h + [np.nan] * len(h), 'time': t})
+    assert actual.equals(expected)
+
+    # time_interval
+    t = pd.date_range(start, periods=len(h), freq='15min')
+    series = pd.Series(h, index=t)
+    # similar to range, get_df_slices stops before the last element
+    # so, we need to add one more element
+    end = t[-1] + pd.to_timedelta('15min')
+    actual = motif.generate_nodes(series, start_time=start,
+                                  end_time=end,
+                                  time_interval='15min')
+    expected = pd.DataFrame({'node': h, 'time': t})
+    assert actual.equals(expected)
+
+    # the time index does not need to be aligned exactly
+    s = start + pd.to_timedelta('5min')
+    t = pd.date_range(s, periods=len(h), freq='30min')
+    series = pd.Series(h, index=t)
+    actual = motif.generate_nodes(series, start_time=start)
+
+    # note that it time index will align with start
+    expected = pd.DataFrame({'node': h,
+                             'time': t - pd.to_timedelta('5min')})
+    assert actual.equals(expected)
 
 
 @pytest.mark.xfail
