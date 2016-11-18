@@ -12,7 +12,7 @@ from collections import Counter
 import math
 
 # install anvil from https://github.com/saeed-abdullah/Anvil
-import anvil
+from anvil.utils import get_df_slices
 from geopy import distance, point
 import geohash
 import pandas as pd
@@ -126,7 +126,7 @@ def get_primary_location(locations, aggr_f='count'):
     Parameters
     ----------
     locations : Series
-        Series with geo hased values.
+        Series with geo hashed values.
 
     aggr_f : str
         Aggregating function. Default is 'count' which
@@ -255,7 +255,7 @@ def generate_daily_nodes(df, hash_c='geo_hash',
     df = df.dropna(subset=[hash_c])
 
     days = pd.date_range(start=start_date, end=end_date, freq='1D')
-    for index, rows in enumerate(anvil.utils.get_df_slices(df, days)):
+    for index, rows in enumerate(get_df_slices(df, days)):
         d = days[index]
 
         nodes = generate_nodes(rows[hash_c], start_time=d, **kwargs)
@@ -283,7 +283,7 @@ def generate_nodes(locations,
     ----------
 
     locations : Series
-        Series with sorted DateTimeIndex and geo hased values
+        Series with sorted DateTimeIndex and geo hashed values
         over a given day.
 
     start_time : pandas.tslib.Timestamp
@@ -319,8 +319,7 @@ def generate_nodes(locations,
                               end=end_time, freq=time_interval)
     s = []
 
-    for index, t in enumerate(anvil.utils.get_df_slices(locations,
-                                                        intervals)):
+    for index, t in enumerate(get_df_slices(locations, intervals)):
 
         if len(t) < valid_interval_th:
             s.append({'node': np.nan, 'time': intervals[index]})
