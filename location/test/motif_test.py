@@ -202,9 +202,19 @@ def test_generate_nodes():
     assert actual.equals(expected)
 
 
-@pytest.mark.xfail
 def test_generate_graph():
-    raise NotImplementedError
+    s = ['a', 'b', 'c']
+    actual = motif.generate_graph(pd.Series(s))
+    expected = ['a b', 'b c']
+
+    assert expected == actual
+
+    # adding NaN would not change it
+    s.insert(2, np.nan)
+    s.insert(0, np.nan)
+
+    actual = motif.generate_graph(pd.Series(s))
+    assert expected == actual
 
 
 def test_get_geo_center():
