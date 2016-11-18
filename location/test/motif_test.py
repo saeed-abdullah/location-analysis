@@ -64,7 +64,7 @@ def test_trim_geo_hash_precision():
     l = ['11', '22', '33']
     a = motif.trim_geo_hash_precision(pd.Series(l),
                                       precision=1)
-    assert all(a.values == [x[1] for x in l])
+    assert np.all(a == [x[1] for x in l])
 
 
 def test_filter_out_rare_points():
@@ -176,7 +176,7 @@ def test_merge_neighboring_grid():
     actual = motif.merge_neighboring_grid(h)
     expected = ['9q8y'] * len(h)
 
-    assert all(expected == actual)
+    assert np.all(expected == actual)
 
     # sometimes the greedy approach does not result in
     # most optimum solution. For example, if we
@@ -188,7 +188,7 @@ def test_merge_neighboring_grid():
     actual = motif.merge_neighboring_grid(h)
     expected = ['9q8t', '9q8t', '9q8x', '9q8t', '9q8t', '9q8t']
 
-    assert all(expected == actual)
+    assert np.all(expected == actual)
 
 
 def test_get_stay_region():
@@ -212,7 +212,7 @@ def test_get_stay_region():
     actual = motif.get_stay_region(df, lat_c='lat',
                                    lon_c='lon', precision=4)
     expected = ['9q8y'] * len(coords)
-    assert all(actual == expected)
+    assert np.all(actual == expected)
 
     # add more points to 9q8t so that the merging starts
     # from there. It will result in two regions
@@ -228,4 +228,4 @@ def test_get_stay_region():
     # see the grids in test_get_stay_point`
     expected = ['9q8t', '9q8t', '9q8t', '9q9j', '9q9j',
                 '9q8t', '9q8t', '9q8t', '9q8t']
-    assert all(actual == expected)
+    assert np.all(actual == expected)
