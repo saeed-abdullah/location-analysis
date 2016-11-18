@@ -92,9 +92,64 @@ def test_get_primary_location():
         motif.get_primary_location(pd.Series(l), aggr_f='not-count')
 
 
-@pytest.mark.xfail
 def test_generate_daily_nodes():
-    raise NotImplementedError
+    h = list(range(48))
+    start = pd.to_datetime('2016-11-16')
+    t = pd.date_range(start, periods=len(h), freq='30min')
+    df = pd.DataFrame({'geo_hash': h}, index=t)
+
+    actual = motif.generate_daily_nodes(df)
+    expected = pd.DataFrame({'time': t, 'node': h})
+
+    assert actual[0][0] == start
+    assert expected.equals(actual[0][1])
+
+    # start and end date
+    end = start + pd.to_timedelta('2D')
+    actual = motif.generate_daily_nodes(df, start_date=start,
+                                        end_date=end)
+    expected = pd.DataFrame({'time': t, 'node': h})
+
+    assert len(actual) == 2
+    assert actual[0][0] == start
+    assert expected.equals(actual[0][1])
+
+    # next day
+    assert actual[1][0] == start + pd.to_timedelta('1D')
+    expected = pd.DataFrame({'time': t + pd.to_timedelta('1D'),
+                             'node': [np.nan] * len(t)})
+    assert expected.equals(actual[1][1])
+
+    # shift start of the day
+    shift = pd.to_timedelta('2hr')
+    actual = motif.generate_daily_nodes(df, shift_day_start=shift)
+
+    assert len(actual) == 1
+    # the first 4 records (from 2 hr shift) now belongs to
+    # previous day
+    assert actual[0][0] == start + shift
+    expected = pd.DataFrame({'time': t + shift,
+                             'node': h[4:] + [np.nan] * 4})
+
+    # rare point threshold
+    actual = motif.generate_daily_nodes(df, rare_pt_pct_th=3.0)
+    expected = pd.DataFrame({'time': t, 'node': [np.nan] * len(t)})
+    assert len(actual) == 1
+    assert actual[0][0] == start
+    assert expected.equals(actual[0][1])
+
+    # valid count per day threshold
+    actual = motif.generate_daily_nodes(df, valid_day_th=49)
+    assert len(actual) == 1
+    assert actual[0][0] == start
+    assert np.isnan(actual[0][1])
+
+    # keywords to generate_nodes()
+    actual = motif.generate_daily_nodes(df, valid_interval_th=2)
+    expected = pd.DataFrame({'time': t, 'node': [np.nan] * len(t)})
+    assert len(actual) == 1
+    assert actual[0][0] == start
+    assert expected.equals(actual[0][1])
 
 
 def test_generate_nodes():
