@@ -159,7 +159,7 @@ def generate_daily_nodes(df, hash_c='geo_hash',
                          valid_day_th=8,
                          start_date=None,
                          end_date=None,
-                         **kwargs):
+                         node_args=None):
     """
     Parameters
     ----------
@@ -200,10 +200,9 @@ def generate_daily_nodes(df, hash_c='geo_hash',
         End date to generate nodes. If None, 1 + maximum day
         in the DateTimeIndex will be used.
 
-    kwargs
-        Arbitrary keyword based arguments passed to
-        `generate_nodes` (e.g., time_interval)
-
+    node_args : dict
+        Arguments to pass to `generate_nodes` (e.g., time_interval).
+        Default is None.
 
     Returns
     -------
@@ -254,11 +253,14 @@ def generate_daily_nodes(df, hash_c='geo_hash',
     # remove NA values (potentially resulting from removing rare points)
     df = df.dropna(subset=[hash_c])
 
+    if node_args is None:
+        node_args = {}
+
     days = pd.date_range(start=start_date, end=end_date, freq='1D')
     for index, rows in enumerate(get_df_slices(df, days)):
         d = days[index]
 
-        nodes = generate_nodes(rows[hash_c], start_time=d, **kwargs)
+        nodes = generate_nodes(rows[hash_c], start_time=d, **node_args)
 
         if len(nodes) < valid_day_th:
             l.append((d, np.nan))

@@ -145,7 +145,8 @@ def test_generate_daily_nodes():
     assert np.isnan(actual[0][1])
 
     # keywords to generate_nodes()
-    actual = motif.generate_daily_nodes(df, valid_interval_th=2)
+    node_args = {'valid_interval_th': 2}
+    actual = motif.generate_daily_nodes(df, node_args=node_args)
     expected = pd.DataFrame({'time': t, 'node': [np.nan] * len(t)})
     assert len(actual) == 1
     assert actual[0][0] == start
