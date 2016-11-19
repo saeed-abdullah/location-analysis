@@ -308,9 +308,11 @@ def generate_nodes(locations,
 
     Returns
     -------
-    s : Series
-        Series with interval order as keys and primary location as
-        values. If the interval is not valid (e.g., not having
+    DataFrame
+        It contains two columns: 'node' and 'time'. The node
+        column contains the primary locations and the time
+        column contains the start timestamp of each interval.
+        If the interval is not valid (e.g., not having
         sufficient records), it will contain np.nan as value.
     """
 
