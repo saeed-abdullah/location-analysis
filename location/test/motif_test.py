@@ -10,6 +10,8 @@
 """
 
 from io import StringIO
+from unittest.mock import ANY, patch
+
 import geopy
 import pandas as pd
 import numpy as np
@@ -381,3 +383,117 @@ def test_load_nodes():
     assert actual[0][0] == start
     # columns in same order
     assert node.equals(actual[0][1].sort(axis=1))
+
+
+def test_compute_nodes():
+
+    # We need at least 8 records for generate_daily_nodes
+    # And, for each of this value, we should have a stay
+    # point. This means, we need
+    #    i) at least two subsequent within 300m of each other,
+    #   ii) the timestamp between each pair should be >= 30 mins
+    #   iii) each pair should be followed by another point which
+    #   is suffciently far enough (> 300 m)
+
+    coords = [(-76.48327, 42.44701),
+              (-76.4761338923341, 42.44583908268239)]
+    time = []
+    longitudes = []
+    latitudes = []
+    start = pd.to_datetime('2016-11-16')
+    for index, h in enumerate(range(8)):
+        s = start + pd.to_timedelta('{0}h'.format(h))
+        time.append(s)
+
+        # next time stamp should be at least 30 mins away
+        n = s + pd.to_timedelta('45min')
+        time.append(n)
+
+        c = coords[index % 2 == 0]
+        # we need two records
+        longitudes.extend([c[0]] * 2)
+        latitudes.extend([c[1]] * 2)
+
+    df = pd.DataFrame({'longitude': longitudes,
+                       'latitude': latitudes}, index=time)
+
+    stay, nodes = motif.compute_nodes(df, lon_c='longitude',
+                                      lat_c='latitude')
+    # each point repeated twice
+    expected_points = [i//2 for i in range(len(time))]
+
+    expected = df.copy()
+    expected['stay_point'] = expected_points
+    expected['stay_region'] = motif.compute_geo_hash(expected,
+                                                     lat_c='latitude',
+                                                     lon_c='longitude',
+                                                     precision=7)
+
+    # columns in same order
+    expected = expected.sort(axis=1)
+    assert expected.equals(stay.sort(axis=1))
+
+    # expected nodes
+    index = pd.date_range(start=start, periods=48, freq='30min')
+    n = expected.stay_region.tolist() + [np.nan] * (48 - len(expected))
+    expected_nodes = pd.DataFrame({'node': n, 'time': index})
+
+    assert nodes[0][0] == start
+    assert expected_nodes.equals(nodes[0][1])
+
+    # check the stay_point_args
+    with patch.object(motif, 'get_stay_point', return_value=1) as p:
+        args = {'dist_th': 400, 'time_th': '60m'}
+        motif.compute_nodes(df, lon_c='longitude', lat_c='latitude',
+                            stay_point_args=args)
+    p.assert_called_once_with(ANY, lat_c='latitude', lon_c='longitude',
+                              dist_th=400,
+                              time_th='60m')
+
+    # check the stay_region_args
+    with patch.object(motif, 'get_stay_region', return_value=1) as p:
+        args = {'precision': 10}
+        motif.compute_nodes(df, lon_c='longitude', lat_c='latitude',
+                            stay_region_args=args)
+    p.assert_called_once_with(ANY, lat_c='latitude', lon_c='longitude',
+                              precision=10)
+
+    # check the node_args
+    with patch.object(motif, 'generate_nodes', return_value=[]) as p:
+        args = {'end_time': 'end_time', 'time_interval': '80Min',
+                'valid_interval_th': 12}
+        motif.compute_nodes(df, lon_c='longitude', lat_c='latitude',
+                            node_args=args)
+    p.assert_called_once_with(ANY, start_time=start, end_time='end_time',
+                              time_interval='80Min',
+                              valid_interval_th=12)
+
+    # check the daily_args
+    with patch.object(motif, 'generate_daily_nodes') as p:
+        args = {'geo_hash_preicion': 2, 'shift_day_start': 'shift',
+                'rare_pt_pct_th': 10, 'valid_day_th': 20,
+                'start_date': 'start', 'end_date': 'end'}
+        motif.compute_nodes(df, lon_c='longitude', lat_c='latitude',
+                            daily_args=args)
+
+    p.assert_called_once_with(ANY, hash_c='stay_region', geo_hash_preicion=2,
+                              shift_day_start='shift',
+                              rare_pt_pct_th=10,
+                              valid_day_th=20,
+                              start_date='start',
+                              end_date='end',
+                              node_args=ANY)
+
+    # check the stay_info_output
+    with patch.object(pd.DataFrame, 'to_csv') as p:
+        motif.compute_nodes(df, lon_c='longitude', lat_c='latitude',
+                            stay_info_output='output')
+
+    p.assert_called_once_with('output')
+
+    # check the stay_info_output
+    with patch.object(motif, '_save_nodes') as p:
+        motif.compute_nodes(df, lon_c='longitude', lat_c='latitude',
+                            node_output='node')
+
+    p.assert_called_once_with(ANY, 'node')

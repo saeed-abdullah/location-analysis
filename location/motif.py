@@ -734,3 +734,86 @@ def _load_nodes(path, convert_tz=True, target_tz=None):
         l.append((timestamp, nodes))
 
     return l
+
+
+def compute_nodes(df,
+                  lon_c='longitude',
+                  lat_c='latitude',
+                  stay_point_args=None,
+                  stay_region_args=None,
+                  node_args=None,
+                  daily_args=None,
+                  stay_info_output=None,
+                  node_output=None):
+    """
+    Utility function for generating location motif
+
+    Parameters
+    ----------
+    df : DataFrame
+        DataFrame with sorted DateTimeIndex
+    lon_c : str
+        Column containing longitude values. Default is `longitude`.
+    lat_c : str
+        Column containing latitude values. Default is `latitude`.
+    stay_point_args : dict
+        Arguments to pass to `get_stay_point`. Default is `None`,
+        default parameters will be used in that case.
+    stay_region_args : dict
+        Arguments to pass to `get_stay_region`. Default is `None`,
+        default parameters will be used in that case.
+    node_args : dict
+        Arguments to pass to `generate_nodes`. Default is `None`,
+        default parameters will be used in that case.
+    daily_args : dict
+        Arguments to pass to `generate_daily_nodes`. Default is `None`,
+        default parameters will be used in that case.
+    stay_into_output : Path
+        The output path to which a dataframe with stay points and regions
+        will be saved. See the Returns section for the format.
+        Default is `None`, no output will be saved in that case.
+    node_output : Path
+        The output path to save generated daily nodes. Default is `None`,
+        no output will be saved in that case.
+
+    Returns
+    -------
+    (df, nodes) : (DataFrame, list)
+        The data frame with stay points and regions. It has the same rows
+        as the given parameters with lat_c, lon_c, 'stay_point', and
+        'stay_region' columns. The second element of the returned tuple
+        contains a list of daily nodes. See `generate_daily_nodes` for
+        more details.
+    """
+
+    if stay_point_args is None:
+        stay_point_args = {}
+    if stay_region_args is None:
+        stay_region_args = {}
+    if node_args is None:
+        node_args = {}
+    if daily_args is None:
+        daily_args = {}
+
+    df = df.loc[:, [lon_c, lat_c]].copy()
+    df['stay_point'] = get_stay_point(df,
+                                      lon_c=lon_c,
+                                      lat_c=lat_c,
+                                      **stay_point_args)
+    df['stay_region'] = get_stay_region(df,
+                                        lon_c=lon_c,
+                                        lat_c=lat_c,
+                                        **stay_region_args)
+
+    nodes = generate_daily_nodes(df.dropna(subset=['stay_region']),
+                                 hash_c='stay_region',
+                                 node_args=node_args,
+                                 **daily_args)
+
+    if stay_info_output is not None:
+        df.to_csv(stay_info_output)
+
+    if node_output is not None:
+        _save_nodes(nodes, node_output)
+
+    return df, nodes
