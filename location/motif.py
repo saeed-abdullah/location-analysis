@@ -632,3 +632,105 @@ def get_stay_region(df, stay_point_c='stay_point',
 
     # now convert the stay points to stay regions
     return merge_neighboring_grid(stay_points)
+
+
+def _save_nodes(nodes, path):
+    """
+    Saves nodes from `generate_daily_nodes` as csv file.
+
+    Parameters
+    ----------
+    nodes : iterables
+        Nodes from `generate_daily_nodes`. It is a list of
+        tuples (Timestamp, DataFrame).
+
+    path : str
+        Output path. It should have a .csv extension.
+
+    Notes
+    -----
+        The data is saved as a DataFrame with following
+        columns: 'timestamp', 'tz', 'node', 'time'. The
+        first two columns correspond to the first element
+        in the tuple. The 'node' and 'time' columns are
+        retained as returned from `generate_daily_nodes`.
+
+        To retrieve the nodes, you should perform a group-by
+        function on 'timestamp'. See `_load_nodes` for
+        more details.
+    """
+
+    df = None
+    for node in nodes:
+        timestamp = node[0]
+        tz = node[0].tz
+
+        d = node[1].copy()
+        d['timestamp'] = timestamp
+        d['tz'] = tz
+
+        if df is None:
+            df = d
+        else:
+            df = df.concat([df, d])
+
+    df.to_csv(path)
+
+
+def _load_nodes(path, convert_tz=True, target_tz=None):
+    """
+    Load nodes from a given csv file.
+
+    For data format, see `_save_nodes`.
+
+    Parameters
+    ----------
+    path : str
+        Input file path.
+
+    convert_tz : bool
+        If the 'time' column should be converted to
+        timestamp using pd.to_datetime. Default is
+        True — the 'time' column will be converted.
+
+    target_tz : string, pytz.timezone, dateutil.tz.tzfile or None
+        Timezone information to be used when converting
+        'time column. Default is None, in that case the timezone
+        information from the corresponding timestamp column
+        will be used.
+
+    Returns
+    ------
+    l : list
+        A list containing tuples of (Timestamp, DataFrame)
+        similar to the return value of `generate_daily_nodes`.
+    """
+
+    l = []
+    df = pd.read_csv(path)
+
+    for t, v in df.groupby('timestamp'):
+        tz = v.loc[0, 'tz']
+        timestamp = pd.Timestamp(t, tz=tz)
+        # skip tz and timestamp columns
+        nodes = v.loc[:, ['time', 'node']].copy()
+
+        # converting to datetime
+        if convert_tz:
+            nodes.time = pd.to_datetime(nodes.time)
+
+            # convert to utc
+            nodes.time = nodes.time.map(lambda z: z.tz_localize('utc'))
+
+            # timezone information
+            if target_tz is None:
+                tz_c = tz
+            else:
+                tz_c = target_tz
+
+            # convert to target timezone
+            nodes.time = nodes.time.map(lambda z: z.tz_convert(tz_c))
+
+        l.append((timestamp, nodes))
+
+    return l

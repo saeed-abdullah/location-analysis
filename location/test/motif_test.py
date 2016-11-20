@@ -9,6 +9,7 @@
 
 """
 
+from io import StringIO
 import geopy
 import pandas as pd
 import numpy as np
@@ -340,3 +341,43 @@ def test_get_stay_region():
     expected = ['9q8t', '9q8t', '9q8t', '9q9j', '9q9j',
                 '9q8t', '9q8t', '9q8t', '9q8t']
     assert np.all(actual == expected)
+
+
+def test_save_nodes():
+    h = list(range(48))
+    start = pd.to_datetime('2016-11-16', utc=True).tz_convert('US/Eastern')
+    t = pd.date_range(start, periods=len(h), freq='30min')
+
+    node = pd.DataFrame({'time': t, 'node': h})
+    nodes = [(start, node)]
+
+    expected = node.copy()
+    expected['timestamp'] = start
+    expected['tz'] = start.tz
+
+    f = StringIO()
+    motif._save_nodes(nodes, f)
+
+    assert f.getvalue() == expected.to_csv()
+
+
+def test_load_nodes():
+    h = list(range(48))
+    start = pd.to_datetime('2016-11-16', utc=True).tz_convert('US/Eastern')
+    t = pd.date_range(start, periods=len(h), freq='30min')
+
+    node = pd.DataFrame({'time': t, 'node': h})
+
+    expected = node.copy()
+    expected['timestamp'] = start
+    expected['tz'] = start.tz
+
+    f = StringIO()
+    expected.to_csv(f)
+    f.seek(0)
+
+    actual = motif._load_nodes(f)
+    assert len(actual) == 1
+    assert actual[0][0] == start
+    # columns in same order
+    assert node.equals(actual[0][1].sort(axis=1))
