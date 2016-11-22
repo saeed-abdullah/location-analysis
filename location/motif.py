@@ -8,7 +8,9 @@
     :copyright: (c) 2016 by Saeed Abdullah.
 """
 
+import argparse
 from collections import Counter
+import json
 import math
 
 # install anvil from https://github.com/saeed-abdullah/Anvil
@@ -817,3 +819,30 @@ def compute_nodes(df,
         _save_nodes(nodes, node_output)
 
     return df, nodes
+
+
+def main():
+    """
+    Handles command line options.
+    """
+
+    parser = argparse.ArgumentParser()
+
+    # command
+    parser.add_argument('-g', '--generate', required=True, choices=['node'],
+                        help="Generate motif or node")
+    parser.add_argument('-f', '--file', help='File path')
+    parser.add_argument('-c', '--config', help='JSON config file path')
+
+    args = parser.parse_args()
+
+    if args.generate == 'node':
+        df = pd.DataFrame(args.file)
+
+        with open(args.config) as f:
+            params = json.load(f)
+
+        compute_nodes(df, **params)
+
+if __name__ == '__main__':
+    main()
