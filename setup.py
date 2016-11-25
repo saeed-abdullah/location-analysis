@@ -32,7 +32,7 @@ setup(
     zip_safe=False,
     install_requires=[
         'pandas==0.18.1',
-        'geohash==0.8.5',
+        'python-geohash==0.8.5',
         'geopy==1.11.0'
     ],
 
