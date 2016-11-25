@@ -1,4 +1,4 @@
-panda==0.18.1
+pandas==0.18.1
 geohash==0.8.5
 geopy==1.11.0
 

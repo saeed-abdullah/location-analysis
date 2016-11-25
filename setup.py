@@ -31,7 +31,7 @@ setup(
     include_package_data=True,
     zip_safe=False,
     install_requires=[
-        'panda==0.18.1',
+        'pandas==0.18.1',
         'geohash==0.8.5',
         'geopy==1.11.0'
     ],
