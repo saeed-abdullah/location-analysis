@@ -1,4 +1,4 @@
-![Travis](https://travis-ci.org/saeed-abdullah/location-analysis.svg?branch=master)
+[![Travis](https://travis-ci.org/saeed-abdullah/location-analysis.svg?branch=master)](https://travis-ci.org/saeed-abdullah/location-analysis)
 
 ## Utility functions for analyzing location data ##
 
