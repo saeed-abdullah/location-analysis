@@ -3,5 +3,5 @@ python-geohash==0.8.5
 geopy==1.11.0
 
 # Anvil
--e git+https://github.com/saeed-abdullah/Anvil/tree/master#egg=Anvil
+-e git+https://github.com/saeed-abdullah/Anvil#egg=Anvil
 
