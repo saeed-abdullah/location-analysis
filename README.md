@@ -1,3 +1,5 @@
+![Travis](https://travis-ci.org/saeed-abdullah/location-analysis.svg?branch=master)
+
 ## Utility functions for analyzing location data ##
 
 This repository contains a collection for analyzing patterns and trends
