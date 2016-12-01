@@ -674,7 +674,7 @@ def _save_nodes(nodes, path):
         if df is None:
             df = d
         else:
-            df = df.concat([df, d])
+            df = pd.concat([df, d])
 
     df.to_csv(path)
 

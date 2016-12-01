@@ -351,11 +351,23 @@ def test_save_nodes():
     t = pd.date_range(start, periods=len(h), freq='30min')
 
     node = pd.DataFrame({'time': t, 'node': h})
-    nodes = [(start, node)]
+
+    # next day
+    next_s = start + pd.to_timedelta('1D')
+    next_node = pd.DataFrame({'time': t + pd.to_timedelta('1D'), 'node': h})
+
+    nodes = [(start, node), (next_s, next_node)]
 
     expected = node.copy()
     expected['timestamp'] = start
     expected['tz'] = start.tz
+
+    # next day
+    n = next_node.copy()
+    n['timestamp'] = next_s
+    n['tz'] = next_s.tz
+
+    expected = pd.concat([expected, n])
 
     f = StringIO()
     motif._save_nodes(nodes, f)
