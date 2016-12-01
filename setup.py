@@ -33,10 +33,11 @@ setup(
     install_requires=[
         'pandas==0.18.1',
         'python-geohash==0.8.5',
-        'geopy==1.11.0'
+        'geopy==1.11.0',
+        'Anvil==0.1.0'
     ],
 
-    dependency_links=['https://github.com/saeed-abdullah/Anvil#egg=0.1.0'],
+    dependency_links=['https://github.com/saeed-abdullah/Anvil#egg=Anvil-0.1.0'],
 
     classifiers=[
         'Development Status :: 3 - Alpha',
