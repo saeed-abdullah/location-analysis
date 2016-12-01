@@ -36,7 +36,7 @@ setup(
         'geopy==1.11.0'
     ],
 
-    dependency_links=['https://github.com/saeed-abdullah/Anvil'],
+    dependency_links=['https://github.com/saeed-abdullah/Anvil#egg=0.1.0'],
 
     classifiers=[
         'Development Status :: 3 - Alpha',
