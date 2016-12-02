@@ -23,7 +23,7 @@ readme = read_file(os.path.join(here, 'README.md'))
 
 setup(
     name='location_analysis',
-    version='0.1',
+    version='0.2.0',
     long_description=readme,
     url='https://github.com/saeed-abdullah/location-analysis',
     author='Saeed Abdullah',
