@@ -359,12 +359,14 @@ def test_save_nodes():
     nodes = [(start, node), (next_s, next_node)]
 
     expected = node.copy()
-    expected['timestamp'] = start
+    expected['time'] = expected.time.map(lambda z: z.tz_convert('UTC'))
+    expected['timestamp'] = start.tz_convert('UTC')
     expected['tz'] = start.tz
 
     # next day
     n = next_node.copy()
-    n['timestamp'] = next_s
+    n['time'] = n.time.map(lambda z: z.tz_convert('UTC'))
+    n['timestamp'] = next_s.tz_convert('UTC')
     n['tz'] = next_s.tz
 
     expected = pd.concat([expected, n])

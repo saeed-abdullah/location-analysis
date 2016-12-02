@@ -658,6 +658,7 @@ def _save_nodes(nodes, path):
         first two columns correspond to the first element
         in the tuple. The 'node' and 'time' columns are
         retained as returned from `generate_daily_nodes`.
+        All the timestamps are converted to UTC timezone.
 
         To retrieve the nodes, you should perform a group-by
         function on 'timestamp'. See `_load_nodes` for
@@ -670,8 +671,10 @@ def _save_nodes(nodes, path):
         tz = node[0].tz
 
         d = node[1].copy()
-        d['timestamp'] = timestamp
+        d['timestamp'] = timestamp.tz_convert('UTC')
         d['tz'] = tz
+
+        d.time = d.time.map(lambda z: z.tz_convert('UTC'))
 
         if df is None:
             df = d
@@ -715,7 +718,7 @@ def _load_nodes(path, convert_tz=True, target_tz=None):
 
     for t, v in df.groupby('timestamp'):
         tz = v.loc[0, 'tz']
-        timestamp = pd.Timestamp(t, tz=tz)
+        timestamp = pd.Timestamp(t).tz_convert(tz)
         # skip tz and timestamp columns
         nodes = v.loc[:, ['time', 'node']].copy()
 
