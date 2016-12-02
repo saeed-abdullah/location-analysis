@@ -178,13 +178,12 @@ def generate_daily_nodes(df, hash_c='geo_hash',
         `trim_geo_hash_precision` for details. If `None`,
         no trimming will happen. Default is None.
 
-    shift_day_start : pd.tslib.Timedelta
+    shift_day_start : str
         The duration by which the start of the day should
         be shifted. For example, in the original paper,
         the day starts at 3:30AM. Provided value should
         be in pd.tslib.TimeDelta (e.g., for 3:30AM start
-        of the day, it should be pd.to_timedelta('3.5H')).
-        Default is None.
+        of the day, it should be '3.5H'). Default is None.
 
     rare_pt_pct_th : float
         Threshold for rare points in percentage. See
@@ -243,6 +242,7 @@ def generate_daily_nodes(df, hash_c='geo_hash',
 
     # shifting start of the day
     if shift_day_start is not None:
+        shift_day_start = pd.to_timedelta(shift_day_start)
         start_date = start_date + shift_day_start
         end_date = end_date + shift_day_start
 

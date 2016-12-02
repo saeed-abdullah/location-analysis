@@ -124,14 +124,14 @@ def test_generate_daily_nodes():
     assert expected.equals(actual[1][1])
 
     # shift start of the day
-    shift = pd.to_timedelta('2hr')
+    shift = '2hr'
     actual = motif.generate_daily_nodes(df, shift_day_start=shift)
 
     assert len(actual) == 1
     # the first 4 records (from 2 hr shift) now belongs to
     # previous day
-    assert actual[0][0] == start + shift
-    expected = pd.DataFrame({'time': t + shift,
+    assert actual[0][0] == start + pd.to_timedelta(shift)
+    expected = pd.DataFrame({'time': t + pd.to_timedelta(shift),
                              'node': h[4:] + [np.nan] * 4})
 
     # rare point threshold
