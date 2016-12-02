@@ -15,6 +15,8 @@ import math
 
 # install anvil from https://github.com/saeed-abdullah/Anvil
 from anvil.utils import get_df_slices
+from anvil.api import convert_time_zone
+
 from geopy import distance, point
 import geohash
 import pandas as pd
@@ -833,11 +835,16 @@ def main():
                         help="Generate motif or node")
     parser.add_argument('-f', '--file', help='File path')
     parser.add_argument('-c', '--config', help='JSON config file path')
+    parser.add_argument('-tz', '--timezone', default='America/New_York',
+                        help='Target timezone (default: America/New_York)')
+    parser.add_argument('-tc', '--timecolumn', default='time',
+                        help='Column with DateTime info (default: time)')
 
     args = parser.parse_args()
 
     if args.generate == 'node':
-        df = pd.DataFrame(args.file)
+        df = pd.read_csv(args.file)
+        df = convert_time_zone(df, args.timecolumn, to_timezone=args.timezone)
 
         with open(args.config) as f:
             params = json.load(f)
