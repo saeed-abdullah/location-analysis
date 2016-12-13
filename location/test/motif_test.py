@@ -15,8 +15,11 @@ from unittest.mock import ANY, patch
 import geopy
 import pandas as pd
 import numpy as np
+import math
+import networkx as nx
 import pytest
 from pytest import approx
+import geohash
 
 from location import motif
 
@@ -511,3 +514,196 @@ def test_compute_nodes():
                             node_output='node')
 
     p.assert_called_once_with(ANY, 'node')
+
+    
+
+
+def test__compute_gyration():
+    # test data
+    data_lons = [-73.7102671, -73.7098393, -73.71212709999998, -73.90992059999998, 
+                 -73.9102825, -73.9099297, -73.9099264, -73.909925, 
+                 -73.90992220000003, -73.90992490000002]
+    data_lats = [40.75110460000001, 40.7509678, 40.7523959, 40.7153243, 
+                 40.7150695, 40.7153186, 40.7153194, 40.7153141, 
+                 40.7153414, 40.715343]
+    data_stay_region = ['dr5xfdt', 'dr5xfdt', 'dr5xfdt', 'dr5rw5u', 
+                        'dr5rw5u', 'dr5rw5u', 'dr5rw5u', 'dr5rw5u', 
+                        'dr5rw5u', 'dr5rw5u']
+    data_index = ['2015-05-18 13:31:05', '2015-05-18 13:46:13', '2015-05-18 15:38:33', '2015-05-18 19:06:18', 
+                  '2015-05-19 00:28:14', '2015-05-19 04:24:14', '2015-05-19 08:56:38', '2015-05-19 10:50:14', 
+                  '2015-05-19 14:03:10', '2015-05-19 19:21:13']
+    df = pd.DataFrame()
+    df['latitude'] = data_lats
+    df['longitude'] = data_lons
+    df['stay_region'] = data_stay_region
+    df.index = pd.to_datetime(data_index)
+    
+    # expected result
+    expected = 7935.926632803189
+    
+    # tolerance = 0.01 meter
+    assert math.isclose(motif._compute_gyration(df), expected, abs_tol=0.01)
+    
+def test_compute_gyration():
+    # test data
+    data_lons = [-73.7102671, -73.7098393, -73.71212709999998, -73.90992059999998, 
+                 -73.9102825, -73.9099297, -73.9099264, -73.909925, 
+                 -73.90992220000003, -73.90992490000002, -76.477998]
+    data_lats = [40.75110460000001, 40.7509678, 40.7523959, 40.7153243, 
+                 40.7150695, 40.7153186, 40.7153194, 40.7153141, 
+                 40.7153414, 40.715343, 42.447909]
+    data_stay_region = ['dr5xfdt', 'dr5xfdt', 'dr5xfdt', 'dr5rw5u', 
+                        'dr5rw5u', 'dr5rw5u', 'dr5rw5u', 'dr5rw5u', 
+                        'dr5rw5u', 'dr5rw5u', 'dr997xqk']
+    data_index = ['2015-05-18 13:31:05', '2015-05-18 13:46:13', '2015-05-18 15:38:33', '2015-05-18 19:06:18', 
+                  '2015-05-19 00:28:14', '2015-05-19 04:24:14', '2015-05-19 08:56:38', '2015-05-19 10:50:14', 
+                  '2015-05-19 14:03:10', '2015-05-19 19:21:13', '2015-05-21 10:50:14']
+    df = pd.DataFrame()
+    df['latitude'] = data_lats
+    df['longitude'] = data_lons
+    df['stay_region'] = data_stay_region
+    df.index = pd.to_datetime(data_index)
+    
+    # expected result
+    expected = 7935.926632803189
+    
+    # tolerance = 0.01 meter
+    assert math.isclose(motif.compute_gyration(df), expected, abs_tol=0.01)
+    
+    # check when k is larger the number of different visited locations
+    assert np.isnan(motif.compute_gyration(df, k=5))
+    
+def test_generate_motifs():
+    node = pd.DataFrame()
+    timestamp = pd.Timestamp('2016-01-07 03:30:00-0500')
+    node['time'] = pd.date_range(timestamp, periods=48, freq='30min')
+    n = [np.nan, 'dr5rw5u']
+    n.extend(['dr5xg57']*5)
+    n.extend(['dr5xg5g']*4)
+    n.append(np.nan)
+    n.extend(['dr5rw5u']*36)
+    node['node'] = n.copy()
+    nodes = [(timestamp, node)]
+
+    home = 'dr5rw5u'
+    df = pd.DataFrame()
+    df['stay_region'] = ['dr5rw5u'] * 90
+    df['time'] = pd.date_range(timestamp, periods=90, freq='15min')
+    df = df.set_index('time')
+
+    motifs = motif.generate_motifs(df, nodes)
+
+    # number of motifs
+    assert len(motifs) == 1
+    motif_graph = motifs[0]['graph']
+    adjacency_matrix = [[0,1,0], [0,0,1], [1,0,0]]
+    expected_graph = nx.from_numpy_matrix(np.array(adjacency_matrix), create_using=nx.MultiDiGraph())
+
+    # graph isomorphism
+    assert nx.is_isomorphic(motif_graph, expected_graph)
+
+    # number of days sharing same motif
+    assert len(motifs[0]['data']) == 1
+    
+    
+    # insert home
+    motifs = motif.generate_motifs(df, nodes, insert_home=False)
+    assert len(motifs) == 1
+    assert nx.is_isomorphic(motif_graph, expected_graph)
+    
+    
+    # round_trip
+    n[-1] = 'dr5xg57'
+    node['node'] = n.copy()
+    nodes = [(timestamp, node)]
+
+    motifs = motif.generate_motifs(df, nodes, round_trip=False)
+    assert len(motifs) == 1
+    
+    motifs = motif.generate_motifs(df, nodes, round_trip=True)
+    assert len(motifs) == 0
+    
+    # long trip theshold
+    distance_pt = (42.447909, -76.477998, 8)
+    distance_pt_geosh = geohash.encode(distance_pt[0], distance_pt[1], 8)
+    n[7] = distance_pt_geosh
+    n[-1] = 'dr5rw5u'
+    node['node'] = n.copy()
+    nodes = [(timestamp, node)]
+
+    th = vincenty(distance_pt, geohash.decode('dr5rw5u')).m
+
+    motifs = motif.generate_motifs(df, nodes, trav_dist_th=th-100)
+    assert len(motifs) == 0
+    
+    motifs = motif.generate_motifs(df, nodes, trav_dist_th=th+100)
+    assert len(motifs) == 1
+    
+    
+    # day of week
+    node = pd.DataFrame()
+    timestamp = pd.Timestamp('2016-01-07 03:30:00-0500')
+    node['time'] = pd.date_range(timestamp, periods=48, freq='30min')
+    n = [np.nan, 'dr5rw5u']
+    n.extend(['dr5xg57']*5)
+    n.extend(['dr5xg5g']*4)
+    n.append(np.nan)
+    n.extend(['dr5rw5u']*36)
+    node['node'] = n.copy()
+    nodes = [(timestamp, node)]
+
+    motifs = motif.generate_motifs(df, nodes, dayofweek = [5, 6])
+    assert len(motifs) == 0
+    
+    
+    # time slot
+    node = pd.DataFrame()
+    timestamp = pd.Timestamp('2016-01-07 03:30:00-0500')
+    node['time'] = pd.date_range(timestamp, periods=48, freq='30min')
+    n = [np.nan]*45
+    n.extend(['dr5xg57', 'dr5xg5g', 'dr5rw5u'])
+    node['node'] = n.copy()
+    nodes = [(timestamp, node)]
+
+    motifs = motif.generate_motifs(df, nodes, valid_timeslot_th=10)
+    assert len(motifs) == 0
+    
+
+def test_approx_home_location():
+    timestamp1 = pd.Timestamp('2016-01-07 03:30:00-0500')
+    df1 = pd.DataFrame()
+    df1['time'] = pd.date_range(timestamp1, periods=3, freq='30min')
+    df1['stay_region'] = ['dr5xg57', 'dr5xg57', 'dr5xg5g']
+    df1 = df1.set_index('time')
+
+    timestamp2 = pd.Timestamp('2016-01-07 20:00:00-0500')
+    df2 = pd.DataFrame()
+    df2['time'] = pd.date_range(timestamp2, periods=3, freq='30min')
+    df2['stay_region'] = ['dr5xg5g', 'dr5xg5g', 'dr5rw5u']
+    df2 = df2.set_index('time')
+
+    timestamp3 = pd.Timestamp('2016-01-07 12:00:00-0500')
+    df3 = pd.DataFrame()
+    df3['time'] = pd.date_range(timestamp3, periods=3, freq='30min')
+    df3['stay_region'] = ['dr5rw5u', 'dr5rw5u', 'dr5xg57']
+    df3 = df3.set_index('time')
+
+    assert motif.approx_home_location(pd.concat([df1,df2,df3])) == 'dr5xg57'
+    assert motif.approx_home_location(pd.concat([df2,df3])) == 'dr5xg5g'
+    assert motif.approx_home_location(df3) == 'dr5rw5u'
+    
+def test_compute_regularity():
+    df = pd.DataFrame()
+    timestamp = pd.Timestamp('2016-12-5 00:30:00')
+    df['time'] = pd.date_range(timestamp, periods=2, freq='7d')
+    df.loc[2,'time'] = pd.Timestamp('2016-12-6 1:30:00')
+    df['stay_region'] = ['dr5rw5u', 'dr5xg5g', 'dr5xg5g']
+    df = df.set_index('time')
+    
+    reg = motif.compute_regularity(df)
+    
+    reg_computed1 = reg.loc[(reg.index.get_level_values('weekday')==0) & (reg.index.get_level_values('hour')==0), 'regularity']
+    assert math.isclose(reg_computed1, 0.5)
+    
+    reg_computed2 = reg.loc[(reg.index.get_level_values('weekday')==1) & (reg.index.get_level_values('hour')==1), 'regularity']
+    assert math.isclose(reg_computed2, 1)
