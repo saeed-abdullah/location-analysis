@@ -870,7 +870,7 @@ def approx_home_location(data, sr_col='stay_region'):
     return home
 
 
-def _compute_gyration(data, sr_col='stay_region'):
+def compute_total_gyration(data, sr_col='stay_region'):
     """
     Computes the total radius of gyration.
 
@@ -977,7 +977,7 @@ def compute_gyration(data,
 
     # compute gyration of radius
     if k is None:
-        return _compute_gyration(loc_data, sr_col=sr_col)
+        return compute_total_gyration(loc_data, sr_col=sr_col)
     else:
         cnt_locs = Counter(loc_data[sr_col])
         # number of different visited locations
@@ -990,7 +990,7 @@ def compute_gyration(data,
             k_locations = [x[0] for x in k_locations]
             # compute gyration for the k most frequent locations
             loc_data = loc_data.loc[loc_data[sr_col].isin(k_locations)]
-            return _compute_gyration(loc_data, sr_col=sr_col)
+            return compute_total_gyration(loc_data, sr_col=sr_col)
 
 
 def compute_rec_ratio(data, k):

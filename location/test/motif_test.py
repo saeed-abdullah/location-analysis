@@ -517,7 +517,7 @@ def test_compute_nodes():
     p.assert_called_once_with(ANY, 'node')
 
 
-def test__compute_gyration():
+def test_compute_total_gyration():
     # test data
     data_lons = [-73.7102671, -73.7098393, -73.71212709999998,
                  -73.90992059999998, -73.9102825, -73.9099297,
@@ -544,7 +544,9 @@ def test__compute_gyration():
     expected = 7935.926632803189
 
     # tolerance = 0.01 meter
-    assert math.isclose(motif._compute_gyration(df), expected, abs_tol=0.01)
+    assert math.isclose(motif.compute_total_gyration(df),
+                        expected,
+                        abs_tol=0.01)
 
 
 def test_compute_gyration():
