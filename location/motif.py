@@ -830,230 +830,247 @@ def compute_nodes(df,
 
     return df, nodes
 
-def approx_home_location(df, stay_region_col='stay_region'):
+
+def approx_home_location(data, sr_col='stay_region'):
     """
-    Calculate the home location based on the assumption that the most frequently visited location
-    during 24:00 to 6:00 is the home location.
+    Calculate the home location based on the assumption that the most
+    frequently visited location during 24:00 to 6:00 is the home location.
 
     Parameters:
     -----------
-    df: Dataframe
+    data: Dataframe
         User location data
+
+    sr_col: str
+        Column name for stay region.
+        Default is 'stay_region'.
 
     Returns:
     --------
     home: str
         Home location in geohash value.
     """
-
-    df2 = df.copy()
-    df2 = df2[pd.notnull(df2[stay_region_col])]
-    
-    df2['hour'] = [x.hour for x in df2.index]
-    
-    df3 = df2.loc[df2['hour'].isin([0, 1, 2, 3, 4, 5])]
+    loc_data = data.copy()
+    loc_data = loc_data[pd.notnull(loc_data[sr_col])]
+    loc_data['hour'] = [x.hour for x in loc_data.index]
+    # get the location data in the target hours
+    trg_data = loc_data.loc[loc_data['hour'].isin([0, 1, 2, 3, 4, 5])]
     # if no data during 0:00 from 5:00, use location data from 20:00 to 8:00
-    if len(df3) == 0:
-        df3 = df2.loc[df2['hour'].isin([20, 21, 23, 6, 7])]
-    
-    # if there is still no data in corresponding time period, 
+    if len(trg_data) == 0:
+        trg_data = loc_data.loc[loc_data['hour'].isin([20, 21, 23, 6, 7])]
+
+    # if there is still no data in corresponding time period,
     # select the most frequently visited locatoins as home location
-    if len(df3) == 0:
-        df3 = df2.copy()
-    
+    if len(trg_data) == 0:
+        trg_data = loc_data.copy()
+
     # return home location, that is the most frequently visited locatoin
-    home = Counter(df3[stay_region_col]).most_common()[0][0]
-    
+    home = Counter(trg_data[sr_col]).most_common()[0][0]
+
     return home
 
 
 def _compute_gyration(data, sr_col='stay_region'):
     """
     Computes the total radius of gyration.
-    
+
     Parameters:
     -----------
-    
+
     data: DataFrame
         Location data.
-    
+
     sr_col: str
         Column name for stay region.
         Default is 'stay_region'.
-    
+
     Returns:
     --------
-    
+
     (radius of gyration): float
         Radius gyration in meter.
     """
-    df = data.copy()
-    df = df[pd.notnull(df[sr_col])]
+    loc_data = data.copy()
+    loc_data = loc_data[pd.notnull(loc_data[sr_col])]
     # different visited locations
-    visited_locs = np.unique(df[sr_col])
-    
+    visited_locs = np.unique(loc_data[sr_col])
+
     # compute coordinates
-    locs_hist_coord = [geohash.decode(x) for x in df[sr_col]]
-    df['latitude'] = [x[0] for x in locs_hist_coord]
-    df['longitude'] = [x[1] for x in locs_hist_coord]
-    
+    locs_hist_coord = [geohash.decode(x) for x in loc_data[sr_col]]
+    loc_data['latitude'] = [x[0] for x in locs_hist_coord]
+    loc_data['longitude'] = [x[1] for x in locs_hist_coord]
+
     # compute mass of locations
-    r_cm = get_geo_center(df, lat_c='latitude', lon_c='longitude')
-    r_cm = (r_cm['latitude'],r_cm['longitude'])
-    
+    r_cm = get_geo_center(loc_data, lat_c='latitude', lon_c='longitude')
+    r_cm = (r_cm['latitude'], r_cm['longitude'])
+
     # compute gyration of radius
     temp_sum = 0
-    loc_cnt = Counter(df[sr_col])
+    loc_cnt = Counter(loc_data[sr_col])
     N = sum(loc_cnt.values())
-    
+
     for loc in visited_locs:
-        temp_sum += loc_cnt[loc]*vincenty(geohash.decode(loc),r_cm).m**2
-        
+        temp_sum += loc_cnt[loc] * vincenty(geohash.decode(loc), r_cm).m ** 2
+
     return math.sqrt(1/N * temp_sum)
 
-def compute_gyration(data, 
-                     sr_col='stay_region', 
+
+def compute_gyration(data,
+                     sr_col='stay_region',
                      k=None,
-                     remove_dist_pt=True, 
-                     home=None, 
+                     remove_dist_pt=True,
+                     home=None,
                      dist_pt_th=50000):
     """
     Compute radius of gyration.
-    
+
     Parameters:
     -----------
-    
+
     data: DataFrame
         Location data.
-        
+
     sr_col: str
         Column name for stay region.
-        Default is 'stay_region'.    
-    
+        Default is 'stay_region'.
+
     k: int
         k-th radius of gyration.
         Default is None, in this case return total radius of gyration.
-        k-th radius of gyration is the radius gyration compuated up to 
+        k-th radius of gyration is the radius gyration compuated up to
         the k-th most frequent visited locations.
-    
+
     remove_dist_pt: bool
         Whether remove points that are far away from home location.
         Default is True, that is do remove far away points.
-    
+
     home: str
         Geohash string for home location.
-        Default is None. In this case, approximate home location from given location data. 
-    
+        Default is None. In this case, approximate home location from
+        given location data.
+
     dist_pt_th: int
-        Threshold in meter to filter out distant points. 
-    
+        Threshold in meter to filter out distant points.
+
     Returns:
     (radius of gyration): float
         Radius of gyration in meters.
-        Return np.nan is k is greater than the number of different 
+        Return np.nan is k is greater than the number of different
         visited locations.
     """
-    df = data.copy()
-    df = df[pd.notnull(df[sr_col])]
-    
-    visited_locs = np.unique(df[sr_col])
-    
+    loc_data = data.copy()
+    loc_data = loc_data[pd.notnull(loc_data[sr_col])]
+
+    visited_locs = np.unique(loc_data[sr_col])
+
     # remove points that are not in the same city
     if remove_dist_pt:
         if home is None:
-            home = approx_home_location(df)
-        if home is not None:
-            home_coord = geohash.decode(home)        
-            visited_locs = [x for x in visited_locs if vincenty(home_coord, geohash.decode(x)).meters <= dist_pt_th]
-            df = df.loc[df[sr_col].isin(visited_locs)]
-    
+            home = approx_home_location(loc_data)
+        home_coord = geohash.decode(home)
+        visited_locs_filtered = []
+        for x in visited_locs:
+            dist = vincenty(home_coord, geohash.decode(x)).m
+            if dist <= dist_pt_th:
+                visited_locs_filtered.append(x)
+        loc_data = loc_data.loc[loc_data[sr_col].isin(visited_locs_filtered)]
+
     # compute gyration of radius
     if k is None:
-        return _compute_gyration(df, sr_col=sr_col)
+        return _compute_gyration(loc_data, sr_col=sr_col)
     else:
-        df = data.copy()
-        visited_locations = df[sr_col].dropna()
-        c = Counter(visited_locations)
+        cnt_locs = Counter(loc_data[sr_col])
         # number of different visited locations
-        num_visited_locations = len(c)
+        num_visited_locations = len(cnt_locs)
         if k > num_visited_locations:
             return np.nan
         else:
             # k most frequent visited locations
-            k_locations = c.most_common()[:k]
+            k_locations = cnt_locs.most_common()[:k]
             k_locations = [x[0] for x in k_locations]
             # compute gyration for the k most frequent locations
-            df = df.loc[df[sr_col].isin(k_locations)]
-            return _compute_gyration(df, sr_col=sr_col)
-        
-def compute_rec_ratio(df, k):
+            loc_data = loc_data.loc[loc_data[sr_col].isin(k_locations)]
+            return _compute_gyration(loc_data, sr_col=sr_col)
+
+
+def compute_rec_ratio(data, k):
     """
     Compute recurrent ratio.
-    
+
     Parameters:
     -----------
-    
-    df: DataFrame
+
+    data: DataFrame
         Location data.
-        
+
     k: int
         k-th radius of gyration.
-        
+
 
     Returns:
     --------
-    
+
     (recurrent ratio): float
         Recurrent ratio.
-        If k is larger than the number of different visited locations, return np.nan.
+        If k is larger than the number of different visited
+        locations, return np.nan.
     """
-    total_raidus_gyration = compute_gyration(df)
-    k_th_radius_gyration = compute_gyration(df, k=k)
+    total_raidus_gyration = compute_gyration(data)
+    k_th_radius_gyration = compute_gyration(data, k=k)
+
+    # if k_th radius gyration is nan, return nan
     if np.isnan(k_th_radius_gyration):
         return np.nan
     else:
-        return k_th_radius_gyration / total_raidus_gyration   
-    
-def generate_motifs(df, 
-                    nodes, 
-                    round_trip=True, 
+        return k_th_radius_gyration / total_raidus_gyration
+
+
+def generate_motifs(data,
+                    nodes,
+                    sr_col='stay_region',
+                    round_trip=True,
                     insert_home=True,
-                    home=None, 
-                    dayofweek=[0, 1, 2, 3, 4], 
-                    trav_dist_th=50000, 
+                    home=None,
+                    dayofweek=[0, 1, 2, 3, 4],
+                    trav_dist_th=50000,
                     valid_timeslot_th=8):
     """
     Generate moitfs for given data.
 
     Parameters:
     -----------
-    
-    df: DataFrame
+
+    data: DataFrame
         Location data.
-        
+
     nodes: tuple
         Nodes generated by generate_daily_nodes().
-        
+
+    sr_col: str
+        Column name for stay region.
+        Default is 'stay_region'.
+
     round_trip: bool
         Whether to consider only days that start and end at the same date.
         Default is True.
-        
+
     insert_home: bool
-        Whether to insert home location if the first timeslot of daily data is missing.
-        Default is True.
-    
+        Whether to insert home location if the first timeslot of daily
+        data is missing. Default is True.
+
     home: str
         Home location in geohash form.
-        Default is None. In this case, home locatoin is approximated using user location data.
-    
+        Default is None. In this case, home locatoin is approximated using
+        user location data.
+
     dayofweek: list of integers
-        Which days in a week to consider, [0,1,2,3,4,5,6] for Mon, Tue, Thurs, Wed, Fri, Sat, and Sun.
-        Defualt is weekdays.
-        
+        Which days in a week to consider, [0,1,2,3,4,5,6] for Mon, Tue, Thurs,
+        Wed, Fri, Sat, and Sun. Defualt is weekdays.
+
     trav_dist_th: int
-        Travel distance threshold used to filter out days on which the user travels to other cities.
-        Default is 50,000 meters (about 31 miles).
-        
+        Travel distance threshold used to filter out days on which the user
+        travels to other cities. Default is 50,000 meters (about 31 miles).
+
     valid_timeslot_th: int
         Valid time slot thresold required to compute daily motifs.
         Defualt is 8 intervals.
@@ -1061,23 +1078,24 @@ def generate_motifs(df,
 
     Returns:
     --------
-    
+
     motifs: list of dictionary
-        List of motifs, key is a graph object, value is the list of timestamp for days having the same motif
+        List of motifs, key is a graph object, value is the list of timestamp
+        for days having the same motif
     """
 
-    df2 = df.copy()
+    loc_data = data.copy()
 
     # compute home location if needed
     if home is None:
-        home = approx_home_location(df2)
+        home = approx_home_location(loc_data, sr_col=sr_col)
 
     # generate motifs
     motifs = []
 
     for n in nodes:
         tsp = n[0]  # timestamp for current daily nodes
-        list_nodes = n[1].node.dropna().tolist()    # use tolist() here because need to use insert()
+        list_nodes = n[1].node.dropna().tolist()
 
         # check day of week
         if n[0].dayofweek not in dayofweek:
@@ -1090,10 +1108,12 @@ def generate_motifs(df,
         # Fiter out days with abnormal travel distance
         # Skip current daily nodes if the maximum of pair distances among daily
         # nodes exceed the threshold.
-        # That is, disgard the data if the user's trajectory is beyond the area of one city
-        
+        # That is, disgard the data if the user's trajectory is beyond
+        # the area of one city
+
         different_visited_locations = np.unique(list_nodes)
-        dist_list = [vincenty(geohash.decode(x), geohash.decode(home)).m for x in different_visited_locations]
+        dist_list = [vincenty(geohash.decode(x), geohash.decode(home)).m
+                     for x in different_visited_locations]
         if any(d > trav_dist_th for d in dist_list):
             continue
 
@@ -1127,91 +1147,98 @@ def generate_motifs(df,
 
     return motifs
 
-def compute_regularity(df):
+
+def compute_regularity(data, sr_col='stay_region'):
     """
-    Calculate mobility regularity R(t), which is defined as the probability of 
+    Calculate mobility regularity R(t), which is defined as the probability of
     finding the user in her/his most visited location at hourly interval in a
     week (Jiang S et al, 2010)
     [http://humnetlab.mit.edu/wordpress/wp-content/uploads/2010/10/ACM13_ShanJiangII.pdf]
-    
+
     Parameters:
     -----------
-    df: DataFrame
-        location data    
-    
+    data: DataFrame
+        Location data.
+
+    sr_col: str
+        Column name for stay region.
+        Default is 'stay_region'.
+
     Returns:
     --------
-    reg: list of floats
-        mobility regularity in hourly interval in a week
+    reg: DataFrame
+        Mobility regularity in hourly interval in a week.
     """
-    
-    D = {}        # a dictionary stores location visited for intervals, there are 7x4 hourly intervals, 
-                # each key is a tuple of dayofweek and hour. (dayofweek, hour)
-                # where dayofweek is in [0..6] standing for [Monday,..,Sunday], hour is in [0..23],
-                # each value is a list of visted location during that interval.
-                # eg. {(5,13):[a,b,c,a]} means during 13:00 - 14:00 on Fridays the participant
-                # visited location [a,b,c,a]
-    
-    R = {}        # a dictionary storing mobility regularity for each interval
-                # each key is a tuple of dayofweek and hour. (dayofweek, hour)
-                # where dayofweek is in [0..6] standing for [Monday,..,Sunday], hour is in [0..23],
-                # each value is float, the regularity value for that interval.
-                # eg. {(5,13):0.6} means during 13:00 - 14:00 on Fridays the regularity is 0.6
 
-    # initialize D and R
+    # a dictionary stores location visited for intervals,
+    # there are 7x4 hourly intervals,
+    # each key is a tuple of dayofweek and hour. (dayofweek, hour)
+    # where dayofweek is in [0..6] standing for [Monday,..,Sunday],
+    # hour is in [0..23], each value is a list of visted location
+    # during that interval.
+    # eg. {(5,13):[a,b,c,a]} means during 13:00 - 14:00 on Fridays the
+    # participant visited location [a,b,c,a]
+    loc_dict = {}
+
+    # simliart to loc_dict except the value if the mobility regularity
+    # eg. {(5,13):0.6} means during 13:00 - 14:00
+    # on Fridays the regularity is 0.6
+    reg_dict = {}
+
+    # initialize reg_dict and reg_list
     for day in range(7):        # for each day of week
         for hour in range(24):    # for each hour of the day
-            D[(day,hour)] = []
-            R[(day,hour)] = 0
-            
+            loc_dict[(day, hour)] = []
+            reg_dict[(day, hour)] = 0
+
     # group locatino data based on hour and dayofweek
-    df2 = df.copy()
-    df2['hour'] = [x.hour for x in df2.index]
-    df2['dayofweek'] = [x.dayofweek for x in df2.index]
-    grouped = df2.groupby(['dayofweek', 'hour'])
-    
+    loc_data = data.copy()
+    loc_data['hour'] = [x.hour for x in loc_data.index]
+    loc_data['dayofweek'] = [x.dayofweek for x in loc_data.index]
+    grouped = loc_data.groupby(['dayofweek', 'hour'])
+
     # compute visited locations for each interval
     for index, group in grouped:
 
-        # get day of week and 
+        # get day of week and
         dayofweek = index[0]
         hour = index[1]
 
         # add visited locations to corresponding interval
-        visited_locations = group.stay_region.dropna()
-        D[(dayofweek, hour)].extend(visited_locations)
-        
+        visited_locations = group[sr_col].dropna()
+        loc_dict[(dayofweek, hour)].extend(visited_locations)
+
     # compute regularity
-    for key, value in D.items():
+    for key, value in loc_dict.items():
 
         # total number of visited locations with duplicates
         num_locations = len(value)
 
         # get most frequent visited location and calculate its frequency
-        c = Counter(value)
-        if len(c) > 0:
-            num_most_common_location = c.most_common()[0][1] 
-            R[(key[0],key[1])] = num_most_common_location / num_locations 
-    
-    # convert regulariy infomation in R to a list in time order from 0:00 Monday to 23:00 Sunday
+        counter_locs = Counter(value)
+        if len(counter_locs) > 0:
+            num_most_freq = counter_locs.most_common()[0][1]
+            reg_dict[(key[0], key[1])] = num_most_freq / num_locations
+
+    # convert regulariy infomation in R to a list in time order
+    # from 0:00 Monday to 23:00 Sunday
     reg = pd.DataFrame(columns=['weekday', 'hour', 'regularity'])
     weekday = -1
     for day in range(7):
         tmp = {}
         weekday += 1
-        tmp['weekday'] = [int(weekday)]*24
-        tmp['hour'] = [int(x) for x in list(range(24))]
-        rs = []
+        tmp['weekday'] = [weekday]*24
+        tmp['hour'] = list(range(24))
+        regs = []
         for hour in range(24):
-            rs.append(R[day,hour])
-        tmp['regularity'] = rs
+            regs.append(reg_dict[day, hour])
+        tmp['regularity'] = regs
         reg = pd.concat([reg, pd.DataFrame(tmp)])
     reg.hour = reg.hour.astype(int).tolist()
     reg.weekday = reg.weekday.astype(int).tolist()
     reg = reg.set_index(['weekday', 'hour'])
     reg = reg.sort_index()
     return reg
-
 
 
 def main():
