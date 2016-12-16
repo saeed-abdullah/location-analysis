@@ -1064,8 +1064,8 @@ def generate_motifs(data,
         user location data.
 
     dayofweek: list of integers
-        Which days in a week to consider, [0,1,2,3,4,5,6] for Mon, Tue, Thurs,
-        Wed, Fri, Sat, and Sun. Defualt is weekdays.
+        Which days in a week to consider, [0,1,2,3,4,5,6] for Mon, Tue, Wed,
+        Thurs, Fri, Sat, and Sun. Defualt is weekdays.
 
     trav_dist_th: int
         Travel distance threshold used to filter out days on which the user
