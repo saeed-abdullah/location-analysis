@@ -651,3 +651,96 @@ def test_compute_regularity():
                             'regularity']
 
     assert math.isclose(reg_computed2, 1)
+
+
+def test_generate_motifs():
+    node = pd.DataFrame()
+    timestamp = pd.Timestamp('2016-01-07 03:30:00-0500')
+    node['time'] = pd.date_range(timestamp, periods=48, freq='30min')
+    n = [np.nan, 'dr5rw5u']
+    n.extend(['dr5xg57']*5)
+    n.extend(['dr5xg5g']*4)
+    n.append(np.nan)
+    n.extend(['dr5rw5u']*36)
+    node['node'] = n.copy()
+    nodes = [(timestamp, node)]
+
+    home = 'dr5rw5u'
+    df = pd.DataFrame()
+    df['stay_region'] = ['dr5rw5u'] * 90
+    df['time'] = pd.date_range(timestamp, periods=90, freq='15min')
+    df = df.set_index('time')
+
+    motifs = motif.generate_motifs(df, nodes)
+
+    # number of motifs
+    assert len(motifs) == 1
+    motif_graph = motifs[0]['graph']
+    adjacency_matrix = [[0, 1, 0], [0, 0, 1], [1, 0, 0]]
+    expected_graph = nx.from_numpy_matrix(np.array(adjacency_matrix),
+                                          create_using=nx.MultiDiGraph())
+
+    # graph isomorphism
+    assert nx.is_isomorphic(motif_graph, expected_graph)
+
+    # number of days sharing same motif
+    assert len(motifs[0]['data']) == 1
+
+    # insert home
+    motifs = motif.generate_motifs(df, nodes, insert_home=False)
+    assert len(motifs) == 1
+    assert nx.is_isomorphic(motif_graph, expected_graph)
+
+    # round_trip
+    n[-1] = 'dr5xg57'
+    node['node'] = n.copy()
+    nodes = [(timestamp, node)]
+
+    motifs = motif.generate_motifs(df, nodes, round_trip=False)
+    assert len(motifs) == 1
+
+    motifs = motif.generate_motifs(df, nodes, round_trip=True)
+    assert len(motifs) == 0
+
+    # long trip theshold
+    distance_pt = (42.447909, -76.477998, 8)
+    distance_pt_geosh = geohash.encode(distance_pt[0], distance_pt[1], 8)
+    n[7] = distance_pt_geosh
+    n[-1] = 'dr5rw5u'
+    node['node'] = n.copy()
+    nodes = [(timestamp, node)]
+
+    th = vincenty(distance_pt, geohash.decode('dr5rw5u')).m
+
+    motifs = motif.generate_motifs(df, nodes, trav_dist_th=th-100)
+    assert len(motifs) == 0
+
+    motifs = motif.generate_motifs(df, nodes, trav_dist_th=th+100)
+    assert len(motifs) == 1
+
+    # day of week
+    node = pd.DataFrame()
+    timestamp = pd.Timestamp('2016-01-07 03:30:00-0500')
+    node['time'] = pd.date_range(timestamp, periods=48, freq='30min')
+    n = [np.nan, 'dr5rw5u']
+    n.extend(['dr5xg57']*5)
+    n.extend(['dr5xg5g']*4)
+    n.append(np.nan)
+    n.extend(['dr5rw5u']*36)
+    node['node'] = n.copy()
+    nodes = [(timestamp, node)]
+
+    motifs = motif.generate_motifs(df, nodes, dayofweek=[5, 6])
+    assert len(motifs) == 0
+
+    # time slot
+    node = pd.DataFrame()
+    timestamp = pd.Timestamp('2016-01-07 03:30:00-0500')
+    node['time'] = pd.date_range(timestamp, periods=48, freq='30min')
+    n = [np.nan]*45
+    n.extend(['dr5xg57', 'dr5xg5g', 'dr5rw5u'])
+    node['node'] = n.copy()
+    nodes = [(timestamp, node)]
+
+    motifs = motif.generate_motifs(df, nodes, valid_timeslot_th=10)
+    assert len(motifs) == 0
