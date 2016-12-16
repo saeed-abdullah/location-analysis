@@ -177,3 +177,35 @@ def compute_gyration(data,
             # compute gyration for the k most frequent locations
             loc_data = loc_data.loc[loc_data[sr_col].isin(k_locations)]
             return compute_total_gyration(loc_data, sr_col=sr_col)
+
+
+def compute_rec_ratio(data, k):
+    """
+    Compute recurrent ratio.
+
+    Parameters:
+    -----------
+
+    data: DataFrame
+        Location data.
+
+    k: int
+        k-th radius of gyration.
+
+
+    Returns:
+    --------
+
+    (recurrent ratio): float
+        Recurrent ratio.
+        If k is larger than the number of different visited
+        locations, return np.nan.
+    """
+    total_raidus_gyration = compute_gyration(data)
+    k_th_radius_gyration = compute_gyration(data, k=k)
+
+    # if k_th radius gyration is nan, return nan
+    if np.isnan(k_th_radius_gyration):
+        return np.nan
+    else:
+        return k_th_radius_gyration / total_raidus_gyration
