@@ -605,3 +605,49 @@ def test_compute_gyration():
 
     # check when k is larger the number of different visited locations
     assert np.isnan(utils.compute_gyration(df, k=5))
+
+
+def test_compute_regularity():
+    df = pd.DataFrame()
+    timestamp = pd.Timestamp('2016-12-5 00:30:00')
+    df['time'] = pd.date_range(timestamp, periods=2, freq='7d')
+    df.loc[2, 'time'] = pd.Timestamp('2016-12-6 1:30:00')
+    df['stay_region'] = ['dr5rw5u', 'dr5xg5g', 'dr5xg5g']
+    df = df.set_index('time')
+
+    reg = motif.compute_regularity(df)
+
+    reg_computed1 = reg.loc[(reg.index.get_level_values('weekday') == 0) &
+                            (reg.index.get_level_values('hour') == 0),
+                            'regularity']
+
+    assert math.isclose(reg_computed1, 0.5)
+
+    reg_computed2 = reg.loc[(reg.index.get_level_values('weekday') == 1) &
+                            (reg.index.get_level_values('hour') == 1),
+                            'regularity']
+
+    assert math.isclose(reg_computed2, 1)
+
+
+def test_compute_regularity():
+    df = pd.DataFrame()
+    timestamp = pd.Timestamp('2016-12-5 00:30:00')
+    df['time'] = pd.date_range(timestamp, periods=2, freq='7d')
+    df.loc[2, 'time'] = pd.Timestamp('2016-12-6 1:30:00')
+    df['stay_region'] = ['dr5rw5u', 'dr5xg5g', 'dr5xg5g']
+    df = df.set_index('time')
+
+    reg = utils.compute_regularity(df)
+
+    reg_computed1 = reg.loc[(reg.index.get_level_values('weekday') == 0) &
+                            (reg.index.get_level_values('hour') == 0),
+                            'regularity']
+
+    assert math.isclose(reg_computed1, 0.5)
+
+    reg_computed2 = reg.loc[(reg.index.get_level_values('weekday') == 1) &
+                            (reg.index.get_level_values('hour') == 1),
+                            'regularity']
+
+    assert math.isclose(reg_computed2, 1)
