@@ -515,3 +515,27 @@ def test_compute_nodes():
                             node_output='node')
 
     p.assert_called_once_with(ANY, 'node')
+
+
+def test_approx_home_location():
+    timestamp1 = pd.Timestamp('2016-01-07 03:30:00-0500')
+    df1 = pd.DataFrame()
+    df1['time'] = pd.date_range(timestamp1, periods=3, freq='30min')
+    df1['stay_region'] = ['dr5xg57', 'dr5xg57', 'dr5xg5g']
+    df1 = df1.set_index('time')
+
+    timestamp2 = pd.Timestamp('2016-01-07 20:00:00-0500')
+    df2 = pd.DataFrame()
+    df2['time'] = pd.date_range(timestamp2, periods=3, freq='30min')
+    df2['stay_region'] = ['dr5xg5g', 'dr5xg5g', 'dr5rw5u']
+    df2 = df2.set_index('time')
+
+    timestamp3 = pd.Timestamp('2016-01-07 12:00:00-0500')
+    df3 = pd.DataFrame()
+    df3['time'] = pd.date_range(timestamp3, periods=3, freq='30min')
+    df3['stay_region'] = ['dr5rw5u', 'dr5rw5u', 'dr5xg57']
+    df3 = df3.set_index('time')
+
+    assert utils.approx_home_location(pd.concat([df1, df2, df3])) == 'dr5xg57'
+    assert utils.approx_home_location(pd.concat([df2, df3])) == 'dr5xg5g'
+    assert utils.approx_home_location(df3) == 'dr5rw5u'
