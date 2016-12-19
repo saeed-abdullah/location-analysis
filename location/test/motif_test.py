@@ -15,10 +15,14 @@ from unittest.mock import ANY, patch
 import geopy
 import pandas as pd
 import numpy as np
+import math
+import networkx as nx
 import pytest
 from pytest import approx
+import geohash
+from geopy.distance import vincenty
 
-from location import motif
+from location import motif, utils
 
 
 def get_nearby_point(lon, lat, dist_m, bearing=0):
