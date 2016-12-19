@@ -54,3 +54,48 @@ def approx_home_location(data, sr_col='stay_region'):
     home = Counter(trg_data[sr_col]).most_common()[0][0]
 
     return home
+
+
+def compute_total_gyration(data, sr_col='stay_region'):
+    """
+    Computes the total radius of gyration.
+
+    Parameters:
+    -----------
+
+    data: DataFrame
+        Location data.
+
+    sr_col: str
+        Column name for stay region.
+        Default is 'stay_region'.
+
+    Returns:
+    --------
+
+    (radius of gyration): float
+        Radius gyration in meter.
+    """
+    loc_data = data.copy()
+    loc_data = loc_data[pd.notnull(loc_data[sr_col])]
+    # different visited locations
+    visited_locs = np.unique(loc_data[sr_col])
+
+    # compute coordinates
+    locs_hist_coord = [geohash.decode(x) for x in loc_data[sr_col]]
+    loc_data['latitude'] = [x[0] for x in locs_hist_coord]
+    loc_data['longitude'] = [x[1] for x in locs_hist_coord]
+
+    # compute mass of locations
+    r_cm = motif.get_geo_center(loc_data, lat_c='latitude', lon_c='longitude')
+    r_cm = (r_cm['latitude'], r_cm['longitude'])
+
+    # compute gyration of radius
+    temp_sum = 0
+    loc_cnt = Counter(loc_data[sr_col])
+    N = sum(loc_cnt.values())
+
+    for loc in visited_locs:
+        temp_sum += loc_cnt[loc] * vincenty(geohash.decode(loc), r_cm).m ** 2
+
+    return math.sqrt(1/N * temp_sum)
