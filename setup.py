@@ -34,6 +34,7 @@ setup(
         'pandas>=0.18.1',
         'python-geohash==0.8.5',
         'geopy==1.11.0',
+        'networkx>=1.11',
         'Anvil==0.1.0'
     ],
 
