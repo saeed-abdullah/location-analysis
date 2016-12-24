@@ -652,3 +652,60 @@ def test_filter_weekday():
     assert len(nodes) == 2
     assert nodes[0][0].weekday() == 0
     assert nodes[1][0].weekday() == 1
+
+
+def test_generate_motifs():
+    # day 1
+    node = pd.DataFrame()
+    timestamp1 = pd.Timestamp('2016-01-07 03:30:00-0500')
+    node['time'] = pd.date_range(timestamp1, periods=48, freq='30min')
+    n = [np.nan, 'dr5rw5u']
+    n.extend(['dr5xg57'] * 5)
+    n.extend(['dr5xg5g'] * 4)
+    n.append(np.nan)
+    n.extend(['dr5rw5u'] * 36)
+    node['node'] = n.copy()
+    nodes = [(timestamp1, node.copy())]
+
+    # day 2
+    timestamp2 = pd.Timestamp('2016-01-08 03:30:00-0500')
+    node = pd.DataFrame()
+    node['time'] = pd.date_range(timestamp2, periods=48, freq='30min')
+    n = [np.nan] * 20
+    n.extend(['dr5rw5u'] * 20)
+    n.extend(['dr5xg57'] * 8)
+    node['node'] = n.copy()
+    nodes.extend([(timestamp2, node.copy())])
+
+    # day 3
+    timestamp3 = pd.Timestamp('2016-01-09 03:30:00-0500')
+    node = pd.DataFrame()
+    node['time'] = pd.date_range(timestamp3, periods=48, freq='30min')
+    n = [np.nan] * 20
+    n.extend(['dr5xg5g'] * 20)
+    n.extend(['dr5xg57'] * 8)
+    node['node'] = n.copy()
+    nodes.extend([(timestamp3, node.copy())])
+
+    motifs = motif.generate_motifs(nodes)
+    # sort motifs by frequency
+    motifs.sort(key=lambda x: len(x['data']), reverse=True)
+
+    # number of motifs
+    assert len(motifs) == 2
+
+    # graph isomorphism
+    adjacency_matrix = [[0, 1], [0, 0]]
+    expected_graph1 = nx.from_numpy_matrix(np.array(adjacency_matrix.copy()),
+                                           create_using=nx.MultiDiGraph())
+    assert nx.is_isomorphic(motifs[0]['graph'], expected_graph1)
+    assert len(motifs[0]['data']) == 2
+    assert timestamp2 in motifs[0]['data']
+    assert timestamp3 in motifs[0]['data']
+
+    adjacency_matrix = [[0, 1, 0], [0, 0, 1], [1, 0, 0]]
+    expected_graph2 = nx.from_numpy_matrix(np.array(adjacency_matrix.copy()),
+                                           create_using=nx.MultiDiGraph())
+    assert nx.is_isomorphic(motifs[1]['graph'], expected_graph2)
+    assert len(motifs[1]['data']) == 1
+    assert timestamp1 in motifs[1]['data']
