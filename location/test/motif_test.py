@@ -15,10 +15,14 @@ from unittest.mock import ANY, patch
 import geopy
 import pandas as pd
 import numpy as np
+import math
+import networkx as nx
 import pytest
 from pytest import approx
+import geohash
+from geopy.distance import vincenty
 
-from location import motif
+from location import motif, utils
 
 
 def get_nearby_point(lon, lat, dist_m, bearing=0):
@@ -511,3 +515,25 @@ def test_compute_nodes():
                             node_output='node')
 
     p.assert_called_once_with(ANY, 'node')
+
+
+def test_filter_out_invalid_nodes():
+    node = pd.DataFrame()
+    timestamp = pd.Timestamp('2016-01-07 03:30:00-0500')
+    node['time'] = pd.date_range(timestamp, periods=48, freq='30min')
+    n = [np.nan] * 41
+    n.extend(['dr5xg5g'] * 7)
+    node['node'] = n.copy()
+    nodes = [(timestamp, node.copy())]
+
+    node = pd.DataFrame()
+    timestamp = pd.Timestamp('2016-01-08 03:30:00-0500')
+    node['time'] = pd.date_range(timestamp, periods=48, freq='30min')
+    n = [np.nan] * 40
+    n.extend(['dr5xg5g'] * 8)
+    node['node'] = n.copy()
+    nodes.append((timestamp, node.copy()))
+
+    nodes = motif.filter_out_invalid_nodes(nodes)
+
+    assert len(nodes) == 1
