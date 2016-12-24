@@ -584,3 +584,39 @@ def test_filter_round_trip():
 
     nodes = motif.filter_round_trip(nodes)
     assert len(nodes) == 1
+
+
+def test_filter_weekday():
+    # a Monday
+    timestamp = pd.Timestamp('2016-12-12 03:30:00-0500')
+    node = pd.DataFrame()
+    node['time'] = pd.date_range(timestamp, periods=48, freq='30min')
+    n = [np.nan] * 40
+    n.extend(['dr5xg5g'] * 8)
+    node['node'] = n.copy()
+    nodes = [(timestamp, node.copy())]
+
+    # a Tuesday
+    timestamp = pd.Timestamp('2016-12-13 03:30:00-0500')
+    node = pd.DataFrame()
+    node['time'] = pd.date_range(timestamp, periods=48, freq='30min')
+    n = ['dr5xg5g']
+    n.extend([np.nan] * 39)
+    n.extend(['dr5xg5g'] * 8)
+    node['node'] = n.copy()
+    nodes.append((timestamp, node.copy()))
+
+    # a Saturday
+    timestamp = pd.Timestamp('2016-12-24 03:30:00-0500')
+    node = pd.DataFrame()
+    node['time'] = pd.date_range(timestamp, periods=48, freq='30min')
+    n = ['dr5xg5g']
+    n.extend([np.nan] * 39)
+    n.extend(['dr5xg5g'] * 8)
+    node['node'] = n.copy()
+    nodes.append((timestamp, node.copy()))
+
+    nodes = motif.filter_weekday(nodes)
+    assert len(nodes) == 2
+    assert nodes[0][0].weekday() == 0
+    assert nodes[1][0].weekday() == 1
