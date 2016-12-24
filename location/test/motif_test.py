@@ -556,6 +556,29 @@ def test_compute_gyration():
     assert utils.compute_gyration(df, k=2) == pytest.approx(expected, 0.01)
 
 
+def test_compute_regularity():
+    df = pd.DataFrame()
+    timestamp = pd.Timestamp('2016-12-5 00:30:00')
+    df['time'] = pd.date_range(timestamp, periods=2, freq='7d')
+    df.loc[2, 'time'] = pd.Timestamp('2016-12-6 1:30:00')
+    df['stay_region'] = ['dr5rw5u', 'dr5xg5g', 'dr5xg5g']
+    df = df.set_index('time')
+
+    reg = utils.compute_regularity(df)
+
+    reg_computed1 = reg.loc[(reg.index.get_level_values('weekday') == 0) &
+                            (reg.index.get_level_values('hour') == 0),
+                            'regularity']
+
+    assert reg_computed1.iloc[0] == pytest.approx(0.5)
+
+    reg_computed2 = reg.loc[(reg.index.get_level_values('weekday') == 1) &
+                            (reg.index.get_level_values('hour') == 1),
+                            'regularity']
+
+    assert reg_computed2.iloc[0] == pytest.approx(1)
+
+
 def test_filter_out_invalid_nodes():
     node = pd.DataFrame()
     timestamp = pd.Timestamp('2016-01-07 03:30:00-0500')

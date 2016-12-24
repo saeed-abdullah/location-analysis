@@ -115,3 +115,96 @@ def compute_rec_ratio(data, k):
         return np.nan
     else:
         return k_th_radius_gyration / total_raidus_gyration
+
+
+def compute_regularity(data, sr_col='stay_region'):
+    """
+    Calculate mobility regularity R(t), which is defined as the probability of
+    finding the user in her/his most visited location at hourly interval in a
+    week (Jiang S et al, 2010)
+    [http://humnetlab.mit.edu/wordpress/wp-content/uploads/2010/10/ACM13_ShanJiangII.pdf]
+
+    Parameters:
+    -----------
+    data: DataFrame
+        Location data.
+
+    sr_col: str
+        Column name for stay region.
+        Default is 'stay_region'.
+
+    Returns:
+    --------
+    reg: DataFrame
+        Mobility regularity in hourly interval in a week.
+    """
+
+    # a dictionary stores location visited for intervals,
+    # there are 7x4 hourly intervals,
+    # each key is a tuple of dayofweek and hour. (dayofweek, hour)
+    # where dayofweek is in [0..6] standing for [Monday,..,Sunday],
+    # hour is in [0..23], each value is a list of visted location
+    # during that interval.
+    # eg. {(5,13):[a,b,c,a]} means during 13:00 - 14:00 on Fridays the
+    # participant visited location [a,b,c,a]
+    loc_dict = {}
+
+    # simliart to loc_dict except the value if the mobility regularity
+    # eg. {(5,13):0.6} means during 13:00 - 14:00
+    # on Fridays the regularity is 0.6
+    reg_dict = {}
+
+    # initialize reg_dict and reg_list
+    for day in range(7):        # for each day of week
+        for hour in range(24):    # for each hour of the day
+            loc_dict[(day, hour)] = []
+            reg_dict[(day, hour)] = 0
+
+    # group locatino data based on hour and dayofweek
+    loc_data = data.copy()
+    loc_data['hour'] = [x.hour for x in loc_data.index]
+    loc_data['dayofweek'] = [x.dayofweek for x in loc_data.index]
+    grouped = loc_data.groupby(['dayofweek', 'hour'])
+
+    # compute visited locations for each interval
+    for index, group in grouped:
+
+        # get day of week and
+        dayofweek = index[0]
+        hour = index[1]
+
+        # add visited locations to corresponding interval
+        visited_locations = group[sr_col].dropna()
+        loc_dict[(dayofweek, hour)].extend(visited_locations)
+
+    # compute regularity
+    for key, value in loc_dict.items():
+
+        # total number of visited locations with duplicates
+        num_locations = len(value)
+
+        # get most frequent visited location and calculate its frequency
+        counter_locs = Counter(value)
+        if len(counter_locs) > 0:
+            num_most_freq = counter_locs.most_common()[0][1]
+            reg_dict[(key[0], key[1])] = num_most_freq / num_locations
+
+    # convert regulariy infomation in R to a list in time order
+    # from 0:00 Monday to 23:00 Sunday
+    reg = pd.DataFrame(columns=['weekday', 'hour', 'regularity'])
+    weekday = -1
+    for day in range(7):
+        tmp = {}
+        weekday += 1
+        tmp['weekday'] = [weekday]*24
+        tmp['hour'] = list(range(24))
+        regs = []
+        for hour in range(24):
+            regs.append(reg_dict[day, hour])
+        tmp['regularity'] = regs
+        reg = pd.concat([reg, pd.DataFrame(tmp)])
+    reg.hour = reg.hour.astype(int).tolist()
+    reg.weekday = reg.weekday.astype(int).tolist()
+    reg = reg.set_index(['weekday', 'hour'])
+    reg = reg.sort_index()
+    return reg
