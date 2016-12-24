@@ -745,12 +745,22 @@ def test_generate_motifs():
     node = pd.DataFrame()
     node['time'] = pd.date_range(timestamp3, periods=48, freq='30min')
     n = [np.nan] * 20
-    n.extend(['dr5xg5g'] * 20)
-    n.extend(['dr5xg57'] * 8)
+    n.extend(['dr5xg57'] * 20)
+    n.extend(['dr5xg5g'] * 8)
     node['node'] = n.copy()
     nodes.extend([(timestamp3, node.copy())])
 
-    motifs = motif.generate_motifs(nodes)
+    # location information
+    df = pd.DataFrame()
+    stay_region = ['dr5xg5g'] * 90
+    df['stay_region'] = stay_region
+    df['time'] = pd.date_range(timestamp1, periods=90, freq='15min')
+    df = df.set_index('time')
+    df = pd.concat([df, df, df])
+
+    motifs = motif.generate_motifs(df, nodes,
+                                   insert_home=False,
+                                   round_trip=False)
     # sort motifs by frequency
     motifs.sort(key=lambda x: len(x['data']), reverse=True)
 
@@ -772,3 +782,24 @@ def test_generate_motifs():
     assert nx.is_isomorphic(motifs[1]['graph'], expected_graph2)
     assert len(motifs[1]['data']) == 1
     assert timestamp1 in motifs[1]['data']
+
+    # test round_trip parameter
+    motifs = motif.generate_motifs(df, nodes,
+                                   insert_home=False,
+                                   round_trip=True)
+    assert len(motifs) == 1
+    assert len(motifs[0]['data']) == 1
+    assert motifs[0]['data'][0] == timestamp1
+    assert nx.is_isomorphic(motifs[0]['graph'], expected_graph2)
+
+    # test insert_home parameter
+    motifs = motif.generate_motifs(df, nodes,
+                                   insert_home=True,
+                                   round_trip=True)
+    assert len(motifs) == 1
+    assert len(motifs[0]['data']) == 1
+    assert motifs[0]['data'][0] == timestamp3
+    adjacency_matrix = [[0, 1], [1, 0]]
+    expected_graph3 = nx.from_numpy_matrix(np.array(adjacency_matrix.copy()),
+                                           create_using=nx.MultiDiGraph())
+    assert nx.is_isomorphic(motifs[0]['graph'], expected_graph3)
