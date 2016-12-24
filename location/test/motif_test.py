@@ -517,94 +517,43 @@ def test_compute_nodes():
     p.assert_called_once_with(ANY, 'node')
 
 
-def test_approx_home_location():
-    timestamp1 = pd.Timestamp('2016-01-07 03:30:00-0500')
-    df1 = pd.DataFrame()
-    df1['time'] = pd.date_range(timestamp1, periods=3, freq='30min')
-    df1['stay_region'] = ['dr5xg57', 'dr5xg57', 'dr5xg5g']
-    df1 = df1.set_index('time')
-
-    timestamp2 = pd.Timestamp('2016-01-07 20:00:00-0500')
-    df2 = pd.DataFrame()
-    df2['time'] = pd.date_range(timestamp2, periods=3, freq='30min')
-    df2['stay_region'] = ['dr5xg5g', 'dr5xg5g', 'dr5rw5u']
-    df2 = df2.set_index('time')
-
-    timestamp3 = pd.Timestamp('2016-01-07 12:00:00-0500')
-    df3 = pd.DataFrame()
-    df3['time'] = pd.date_range(timestamp3, periods=3, freq='30min')
-    df3['stay_region'] = ['dr5rw5u', 'dr5rw5u', 'dr5xg57']
-    df3 = df3.set_index('time')
-
-    assert utils.approx_home_location(pd.concat([df1, df2, df3])) == 'dr5xg57'
-    assert utils.approx_home_location(pd.concat([df2, df3])) == 'dr5xg5g'
-    assert utils.approx_home_location(df3) == 'dr5rw5u'
-
-
-def test_compute_total_gyration():
-    # test data
-    data_lons = [-73.7102671, -73.7098393, -73.71212709999998,
-                 -73.90992059999998, -73.9102825, -73.9099297,
-                 -73.9099264, -73.909925, -73.90992220000003,
-                 -73.90992490000002]
-    data_lats = [40.75110460000001, 40.7509678, 40.7523959, 40.7153243,
-                 40.7150695, 40.7153186, 40.7153194, 40.7153141,
-                 40.7153414, 40.715343]
-    data_stay_region = ['dr5xfdt', 'dr5xfdt', 'dr5xfdt', 'dr5rw5u',
-                        'dr5rw5u', 'dr5rw5u', 'dr5rw5u', 'dr5rw5u',
-                        'dr5rw5u', 'dr5rw5u']
-    data_index = ['2015-05-18 13:31:05', '2015-05-18 13:46:13',
-                  '2015-05-18 15:38:33', '2015-05-18 19:06:18',
-                  '2015-05-19 00:28:14', '2015-05-19 04:24:14',
-                  '2015-05-19 08:56:38', '2015-05-19 10:50:14',
-                  '2015-05-19 14:03:10', '2015-05-19 19:21:13']
-    df = pd.DataFrame()
-    df['latitude'] = data_lats
-    df['longitude'] = data_lons
-    df['stay_region'] = data_stay_region
-    df.index = pd.to_datetime(data_index)
-
-    # expected result
-    expected = 7935.926632803189
-
-    # tolerance = 0.01 meter
-    assert math.isclose(utils.compute_total_gyration(df),
-                        expected,
-                        abs_tol=0.01)
-
-
 def test_compute_gyration():
     # test data
-    data_lons = [-73.7102671, -73.7098393, -73.71212709999998,
-                 -73.90992059999998, -73.9102825, -73.9099297,
-                 -73.9099264, -73.909925, -73.90992220000003,
-                 -73.90992490000002, -76.477998]
-    data_lats = [40.75110460000001, 40.7509678, 40.7523959, 40.7153243,
-                 40.7150695, 40.7153186, 40.7153194, 40.7153141,
-                 40.7153414, 40.715343, 42.447909]
-    data_stay_region = ['dr5xfdt', 'dr5xfdt', 'dr5xfdt', 'dr5rw5u',
-                        'dr5rw5u', 'dr5rw5u', 'dr5rw5u', 'dr5rw5u',
-                        'dr5rw5u', 'dr5rw5u', 'dr997xqk']
-    data_index = ['2015-05-18 13:31:05', '2015-05-18 13:46:13',
-                  '2015-05-18 15:38:33', '2015-05-18 19:06:18',
-                  '2015-05-19 00:28:14', '2015-05-19 04:24:14',
-                  '2015-05-19 08:56:38', '2015-05-19 10:50:14',
-                  '2015-05-19 14:03:10', '2015-05-19 19:21:13',
-                  '2015-05-21 10:50:14']
+    data_stay_region = ['dr5xfdt',
+                        'dr5xfdt',
+                        'dr5xfdt',
+                        'dr5rw5u',
+                        'dr5rw5u',
+                        'dr5rw5u',
+                        'dr5rw5u',
+                        'dr5rw5u',
+                        'dr5rw5u',
+                        'dr5rw5u']
     df = pd.DataFrame()
-    df['latitude'] = data_lats
-    df['longitude'] = data_lons
     df['stay_region'] = data_stay_region
-    df.index = pd.to_datetime(data_index)
 
     # expected result
     expected = 7935.926632803189
 
     # tolerance = 0.01 meter
-    assert math.isclose(utils.compute_gyration(df), expected, abs_tol=0.01)
+    assert utils.compute_gyration(df) == pytest.approx(expected, 0.01)
 
     # check when k is larger the number of different visited locations
     assert np.isnan(utils.compute_gyration(df, k=5))
+
+    # add the last gps point for five more times
+    add_df = pd.DataFrame()
+    add_df['stay_region'] = ['dr5rw5u'] * 5
+    df = pd.concat([df, add_df.copy()])
+
+    expected = 6927.0444113855365
+    assert utils.compute_gyration(df) == pytest.approx(expected, 0.01)
+
+    # test the k-th radius of gyration
+    add_df = pd.DataFrame()
+    add_df['stay_region'] = ['dr5xg5g'] * 2
+    df = pd.concat([df, add_df.copy()])
+    assert utils.compute_gyration(df, k=2) == pytest.approx(expected, 0.01)
 
 
 def test_compute_regularity():
@@ -621,103 +570,204 @@ def test_compute_regularity():
                             (reg.index.get_level_values('hour') == 0),
                             'regularity']
 
-    assert math.isclose(reg_computed1, 0.5)
+    assert reg_computed1.iloc[0] == pytest.approx(0.5)
 
     reg_computed2 = reg.loc[(reg.index.get_level_values('weekday') == 1) &
                             (reg.index.get_level_values('hour') == 1),
                             'regularity']
 
-    assert math.isclose(reg_computed2, 1)
+    assert reg_computed2.iloc[0] == pytest.approx(1)
 
 
-def test_generate_motifs():
+def test_filter_out_invalid_nodes():
     node = pd.DataFrame()
     timestamp = pd.Timestamp('2016-01-07 03:30:00-0500')
     node['time'] = pd.date_range(timestamp, periods=48, freq='30min')
-    n = [np.nan, 'dr5rw5u']
-    n.extend(['dr5xg57']*5)
-    n.extend(['dr5xg5g']*4)
-    n.append(np.nan)
-    n.extend(['dr5rw5u']*36)
+    n = [np.nan] * 41
+    n.extend(['dr5xg5g'] * 7)
     node['node'] = n.copy()
-    nodes = [(timestamp, node)]
+    nodes = [(timestamp, node.copy())]
 
-    home = 'dr5rw5u'
+    node = pd.DataFrame()
+    timestamp = pd.Timestamp('2016-01-08 03:30:00-0500')
+    node['time'] = pd.date_range(timestamp, periods=48, freq='30min')
+    n = [np.nan] * 40
+    n.extend(['dr5xg5g'] * 8)
+    node['node'] = n.copy()
+    nodes.append((timestamp, node.copy()))
+
+    nodes = motif.filter_out_invalid_nodes(nodes)
+
+    assert len(nodes) == 1
+
+
+def test_insert_home_location():
+    timestamp = pd.Timestamp('2016-01-07 03:30:00-0500')
     df = pd.DataFrame()
-    df['stay_region'] = ['dr5rw5u'] * 90
+    stay_region = ['dr5rw5u'] * 20
+    stay_region.extend(['dr5xg57'] * 70)
+    df['stay_region'] = stay_region
     df['time'] = pd.date_range(timestamp, periods=90, freq='15min')
     df = df.set_index('time')
 
-    motifs = motif.generate_motifs(df, nodes)
-
-    # number of motifs
-    assert len(motifs) == 1
-    motif_graph = motifs[0]['graph']
-    adjacency_matrix = [[0, 1, 0], [0, 0, 1], [1, 0, 0]]
-    expected_graph = nx.from_numpy_matrix(np.array(adjacency_matrix),
-                                          create_using=nx.MultiDiGraph())
-
-    # graph isomorphism
-    assert nx.is_isomorphic(motif_graph, expected_graph)
-
-    # number of days sharing same motif
-    assert len(motifs[0]['data']) == 1
-
-    # insert home
-    motifs = motif.generate_motifs(df, nodes, insert_home=False)
-    assert len(motifs) == 1
-    assert nx.is_isomorphic(motif_graph, expected_graph)
-
-    # round_trip
-    n[-1] = 'dr5xg57'
+    node = pd.DataFrame()
+    node['time'] = pd.date_range(timestamp, periods=48, freq='30min')
+    n = [np.nan] * 40
+    n.extend(['dr5xg5g'] * 8)
     node['node'] = n.copy()
-    nodes = [(timestamp, node)]
+    nodes = [(timestamp, node.copy())]
 
-    motifs = motif.generate_motifs(df, nodes, round_trip=False)
-    assert len(motifs) == 1
+    nodes = motif.insert_home_location(df, nodes)
+    assert nodes[0][1].ix[0, 'node'] == 'dr5rw5u'
 
-    motifs = motif.generate_motifs(df, nodes, round_trip=True)
-    assert len(motifs) == 0
+    nodes = motif.insert_home_location(df, nodes, home='dr5xg57')
+    assert nodes[0][1].ix[0, 'node'] == 'dr5rw5u'
 
-    # long trip theshold
+
+def test_filter_round_trip():
+    # a day without round trip
+    timestamp = pd.Timestamp('2016-01-07 03:30:00-0500')
+    node = pd.DataFrame()
+    node['time'] = pd.date_range(timestamp, periods=48, freq='30min')
+    n = [np.nan] * 40
+    n.extend(['dr5xg5g'] * 8)
+    node['node'] = n.copy()
+    nodes = [(timestamp, node.copy())]
+
+    # a day with round trip
+    timestamp = pd.Timestamp('2016-01-08 03:30:00-0500')
+    node = pd.DataFrame()
+    node['time'] = pd.date_range(timestamp, periods=48, freq='30min')
+    n = ['dr5xg5g']
+    n.extend([np.nan] * 39)
+    n.extend(['dr5xg5g'] * 8)
+    node['node'] = n.copy()
+    nodes.append((timestamp, node.copy()))
+
+    nodes = motif.filter_round_trip(nodes)
+    assert len(nodes) == 1
+
+
+def test_filter_out_travelling_day():
+    timestamp = pd.Timestamp('2016-01-07 03:30:00-0500')
+    df = pd.DataFrame()
+    stay_region = ['dr5rw5u'] * 20
+    stay_region.extend(['dr5xg57'] * 70)
+    df['stay_region'] = stay_region
+    df['time'] = pd.date_range(timestamp, periods=90, freq='15min')
+    df = df.set_index('time')
+
+    node = pd.DataFrame()
+    node['time'] = pd.date_range(timestamp, periods=48, freq='30min')
+    n = [np.nan] * 40
+    n.extend(['dr5xg5g'] * 8)
+
     distance_pt = (42.447909, -76.477998, 8)
     distance_pt_geosh = geohash.encode(distance_pt[0], distance_pt[1], 8)
-    n[7] = distance_pt_geosh
-    n[-1] = 'dr5rw5u'
-    node['node'] = n.copy()
-    nodes = [(timestamp, node)]
-
+    n[20] = distance_pt_geosh
     th = vincenty(distance_pt, geohash.decode('dr5rw5u')).m
 
-    motifs = motif.generate_motifs(df, nodes, trav_dist_th=th-100)
-    assert len(motifs) == 0
+    node['node'] = n.copy()
+    nodes = [(timestamp, node.copy())]
 
-    motifs = motif.generate_motifs(df, nodes, trav_dist_th=th+100)
-    assert len(motifs) == 1
+    filtered_nodes = motif.filter_out_travelling_day(df,
+                                                     nodes,
+                                                     trav_dist_th=th-100)
+    assert len(filtered_nodes) == 0
+    filtered_nodes = motif.filter_out_travelling_day(df,
+                                                     nodes,
+                                                     trav_dist_th=th+100)
+    assert len(filtered_nodes) == 1
 
-    # day of week
+
+def test_filter_weekday():
+    # a Monday
+    timestamp = pd.Timestamp('2016-12-12 03:30:00-0500')
     node = pd.DataFrame()
-    timestamp = pd.Timestamp('2016-01-07 03:30:00-0500')
     node['time'] = pd.date_range(timestamp, periods=48, freq='30min')
+    n = [np.nan] * 40
+    n.extend(['dr5xg5g'] * 8)
+    node['node'] = n.copy()
+    nodes = [(timestamp, node.copy())]
+
+    # a Tuesday
+    timestamp = pd.Timestamp('2016-12-13 03:30:00-0500')
+    node = pd.DataFrame()
+    node['time'] = pd.date_range(timestamp, periods=48, freq='30min')
+    n = ['dr5xg5g']
+    n.extend([np.nan] * 39)
+    n.extend(['dr5xg5g'] * 8)
+    node['node'] = n.copy()
+    nodes.append((timestamp, node.copy()))
+
+    # a Saturday
+    timestamp = pd.Timestamp('2016-12-24 03:30:00-0500')
+    node = pd.DataFrame()
+    node['time'] = pd.date_range(timestamp, periods=48, freq='30min')
+    n = ['dr5xg5g']
+    n.extend([np.nan] * 39)
+    n.extend(['dr5xg5g'] * 8)
+    node['node'] = n.copy()
+    nodes.append((timestamp, node.copy()))
+
+    nodes = motif.filter_weekday(nodes)
+    assert len(nodes) == 2
+    assert nodes[0][0].weekday() == 0
+    assert nodes[1][0].weekday() == 1
+
+
+def test_generate_motifs():
+    # day 1
+    node = pd.DataFrame()
+    timestamp1 = pd.Timestamp('2016-01-07 03:30:00-0500')
+    node['time'] = pd.date_range(timestamp1, periods=48, freq='30min')
     n = [np.nan, 'dr5rw5u']
-    n.extend(['dr5xg57']*5)
-    n.extend(['dr5xg5g']*4)
+    n.extend(['dr5xg57'] * 5)
+    n.extend(['dr5xg5g'] * 4)
     n.append(np.nan)
-    n.extend(['dr5rw5u']*36)
+    n.extend(['dr5rw5u'] * 36)
     node['node'] = n.copy()
-    nodes = [(timestamp, node)]
+    nodes = [(timestamp1, node.copy())]
 
-    motifs = motif.generate_motifs(df, nodes, dayofweek=[5, 6])
-    assert len(motifs) == 0
-
-    # time slot
+    # day 2
+    timestamp2 = pd.Timestamp('2016-01-08 03:30:00-0500')
     node = pd.DataFrame()
-    timestamp = pd.Timestamp('2016-01-07 03:30:00-0500')
-    node['time'] = pd.date_range(timestamp, periods=48, freq='30min')
-    n = [np.nan]*45
-    n.extend(['dr5xg57', 'dr5xg5g', 'dr5rw5u'])
+    node['time'] = pd.date_range(timestamp2, periods=48, freq='30min')
+    n = [np.nan] * 20
+    n.extend(['dr5rw5u'] * 20)
+    n.extend(['dr5xg57'] * 8)
     node['node'] = n.copy()
-    nodes = [(timestamp, node)]
+    nodes.extend([(timestamp2, node.copy())])
 
-    motifs = motif.generate_motifs(df, nodes, valid_timeslot_th=10)
-    assert len(motifs) == 0
+    # day 3
+    timestamp3 = pd.Timestamp('2016-01-09 03:30:00-0500')
+    node = pd.DataFrame()
+    node['time'] = pd.date_range(timestamp3, periods=48, freq='30min')
+    n = [np.nan] * 20
+    n.extend(['dr5xg5g'] * 20)
+    n.extend(['dr5xg57'] * 8)
+    node['node'] = n.copy()
+    nodes.extend([(timestamp3, node.copy())])
+
+    motifs = motif.generate_motifs(nodes)
+    # sort motifs by frequency
+    motifs.sort(key=lambda x: len(x['data']), reverse=True)
+
+    # number of motifs
+    assert len(motifs) == 2
+
+    # graph isomorphism
+    adjacency_matrix = [[0, 1], [0, 0]]
+    expected_graph1 = nx.from_numpy_matrix(np.array(adjacency_matrix.copy()),
+                                           create_using=nx.MultiDiGraph())
+    assert nx.is_isomorphic(motifs[0]['graph'], expected_graph1)
+    assert len(motifs[0]['data']) == 2
+    assert timestamp2 in motifs[0]['data']
+    assert timestamp3 in motifs[0]['data']
+
+    adjacency_matrix = [[0, 1, 0], [0, 0, 1], [1, 0, 0]]
+    expected_graph2 = nx.from_numpy_matrix(np.array(adjacency_matrix.copy()),
+                                           create_using=nx.MultiDiGraph())
+    assert nx.is_isomorphic(motifs[1]['graph'], expected_graph2)
+    assert len(motifs[1]['data']) == 1
+    assert timestamp1 in motifs[1]['data']
