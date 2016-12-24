@@ -517,6 +517,45 @@ def test_compute_nodes():
     p.assert_called_once_with(ANY, 'node')
 
 
+def test_compute_gyration():
+    # test data
+    data_stay_region = ['dr5xfdt',
+                        'dr5xfdt',
+                        'dr5xfdt',
+                        'dr5rw5u',
+                        'dr5rw5u',
+                        'dr5rw5u',
+                        'dr5rw5u',
+                        'dr5rw5u',
+                        'dr5rw5u',
+                        'dr5rw5u']
+    df = pd.DataFrame()
+    df['stay_region'] = data_stay_region
+
+    # expected result
+    expected = 7935.926632803189
+
+    # tolerance = 0.01 meter
+    assert utils.compute_gyration(df) == pytest.approx(expected, 0.01)
+
+    # check when k is larger the number of different visited locations
+    assert np.isnan(utils.compute_gyration(df, k=5))
+
+    # add the last gps point for five more times
+    add_df = pd.DataFrame()
+    add_df['stay_region'] = ['dr5rw5u'] * 5
+    df = pd.concat([df, add_df.copy()])
+
+    expected = 6927.0444113855365
+    assert utils.compute_gyration(df) == pytest.approx(expected, 0.01)
+
+    # test the k-th radius of gyration
+    add_df = pd.DataFrame()
+    add_df['stay_region'] = ['dr5xg5g'] * 2
+    df = pd.concat([df, add_df.copy()])
+    assert utils.compute_gyration(df, k=2) == pytest.approx(expected, 0.01)
+
+
 def test_filter_out_invalid_nodes():
     node = pd.DataFrame()
     timestamp = pd.Timestamp('2016-01-07 03:30:00-0500')
