@@ -537,3 +537,26 @@ def test_filter_out_invalid_nodes():
     nodes = motif.filter_out_invalid_nodes(nodes)
 
     assert len(nodes) == 1
+
+
+def test_insert_home_location():
+    timestamp = pd.Timestamp('2016-01-07 03:30:00-0500')
+    df = pd.DataFrame()
+    stay_region = ['dr5rw5u'] * 20
+    stay_region.extend(['dr5xg57'] * 70)
+    df['stay_region'] = stay_region
+    df['time'] = pd.date_range(timestamp, periods=90, freq='15min')
+    df = df.set_index('time')
+
+    node = pd.DataFrame()
+    node['time'] = pd.date_range(timestamp, periods=48, freq='30min')
+    n = [np.nan] * 40
+    n.extend(['dr5xg5g'] * 8)
+    node['node'] = n.copy()
+    nodes = [(timestamp, node.copy())]
+
+    nodes = motif.insert_home_location(df, nodes)
+    assert nodes[0][1].ix[0, 'node'] == 'dr5rw5u'
+
+    nodes = motif.insert_home_location(df, nodes, home='dr5xg57')
+    assert nodes[0][1].ix[0, 'node'] == 'dr5rw5u'
