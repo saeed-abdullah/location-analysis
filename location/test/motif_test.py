@@ -629,7 +629,8 @@ def test_filter_round_trip():
     timestamp = pd.Timestamp('2016-01-07 03:30:00-0500')
     node = pd.DataFrame()
     node['time'] = pd.date_range(timestamp, periods=48, freq='30min')
-    n = [np.nan] * 40
+    n = [np.nan] * 39
+    n.append('dr5rw5u')
     n.extend(['dr5xg5g'] * 8)
     node['node'] = n.copy()
     nodes = [(timestamp, node.copy())]
@@ -639,7 +640,7 @@ def test_filter_round_trip():
     node = pd.DataFrame()
     node['time'] = pd.date_range(timestamp, periods=48, freq='30min')
     n = ['dr5xg5g']
-    n.extend([np.nan] * 39)
+    n.extend(['dr5rw5u'] * 39)
     n.extend(['dr5xg5g'] * 8)
     node['node'] = n.copy()
     nodes.append((timestamp, node.copy()))

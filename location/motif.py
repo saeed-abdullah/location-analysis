@@ -941,7 +941,8 @@ def filter_round_trip(nodes,
     """
     filtered_nodes = []
     for node in nodes:
-        if node[1].ix[0, 'node'] == node[1].ix[len(node[1])-1, 'node']:
+        list_nodes = node[1].node.dropna()
+        if list_nodes.iloc[0] == list_nodes.iloc[-1]:
             filtered_nodes.append(deepcopy(node))
 
     return filtered_nodes
