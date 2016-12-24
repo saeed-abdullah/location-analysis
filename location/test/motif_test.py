@@ -560,3 +560,27 @@ def test_insert_home_location():
 
     nodes = motif.insert_home_location(df, nodes, home='dr5xg57')
     assert nodes[0][1].ix[0, 'node'] == 'dr5rw5u'
+
+
+def test_filter_round_trip():
+    # a day without round trip
+    timestamp = pd.Timestamp('2016-01-07 03:30:00-0500')
+    node = pd.DataFrame()
+    node['time'] = pd.date_range(timestamp, periods=48, freq='30min')
+    n = [np.nan] * 40
+    n.extend(['dr5xg5g'] * 8)
+    node['node'] = n.copy()
+    nodes = [(timestamp, node.copy())]
+
+    # a day with round trip
+    timestamp = pd.Timestamp('2016-01-08 03:30:00-0500')
+    node = pd.DataFrame()
+    node['time'] = pd.date_range(timestamp, periods=48, freq='30min')
+    n = ['dr5xg5g']
+    n.extend([np.nan] * 39)
+    n.extend(['dr5xg5g'] * 8)
+    node['node'] = n.copy()
+    nodes.append((timestamp, node.copy()))
+
+    nodes = motif.filter_round_trip(nodes)
+    assert len(nodes) == 1
