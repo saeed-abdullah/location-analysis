@@ -586,6 +586,38 @@ def test_filter_round_trip():
     assert len(nodes) == 1
 
 
+def test_filter_out_travelling_day():
+    timestamp = pd.Timestamp('2016-01-07 03:30:00-0500')
+    df = pd.DataFrame()
+    stay_region = ['dr5rw5u'] * 20
+    stay_region.extend(['dr5xg57'] * 70)
+    df['stay_region'] = stay_region
+    df['time'] = pd.date_range(timestamp, periods=90, freq='15min')
+    df = df.set_index('time')
+
+    node = pd.DataFrame()
+    node['time'] = pd.date_range(timestamp, periods=48, freq='30min')
+    n = [np.nan] * 40
+    n.extend(['dr5xg5g'] * 8)
+
+    distance_pt = (42.447909, -76.477998, 8)
+    distance_pt_geosh = geohash.encode(distance_pt[0], distance_pt[1], 8)
+    n[20] = distance_pt_geosh
+    th = vincenty(distance_pt, geohash.decode('dr5rw5u')).m
+
+    node['node'] = n.copy()
+    nodes = [(timestamp, node.copy())]
+
+    filtered_nodes = motif.filter_out_travelling_day(df,
+                                                     nodes,
+                                                     trav_dist_th=th-100)
+    assert len(filtered_nodes) == 0
+    filtered_nodes = motif.filter_out_travelling_day(df,
+                                                     nodes,
+                                                     trav_dist_th=th+100)
+    assert len(filtered_nodes) == 1
+
+
 def test_filter_weekday():
     # a Monday
     timestamp = pd.Timestamp('2016-12-12 03:30:00-0500')
