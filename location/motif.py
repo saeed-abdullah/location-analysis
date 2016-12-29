@@ -914,7 +914,7 @@ def insert_home_location(data,
     for node in filtered_nodes:
         # if the first time slot is missing,
         # insert home location
-        if type(node[1].ix[0, 'node']) is not str:
+        if pd.isnull(node[1].ix[0, 'node']):
             node[1].ix[0, 'node'] = home
 
     return filtered_nodes
