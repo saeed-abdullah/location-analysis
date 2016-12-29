@@ -717,10 +717,14 @@ def test_filter_weekday():
     node['node'] = n.copy()
     nodes.append((timestamp, node.copy()))
 
-    nodes = motif.filter_weekday(nodes)
-    assert len(nodes) == 2
-    assert nodes[0][0].weekday() == 0
-    assert nodes[1][0].weekday() == 1
+    filtered_nodes = motif.filter_weekday(nodes)
+    assert len(filtered_nodes) == 2
+    assert filtered_nodes[0][0].weekday() == 0
+    assert filtered_nodes[1][0].weekday() == 1
+
+    filtered_nodes = motif.filter_weekday(nodes, dayofweek=[0])
+    assert len(filtered_nodes) == 1
+    assert filtered_nodes[0][0] == pd.Timestamp('2016-12-12 03:30:00-0500')
 
 
 def test_generate_motifs():
