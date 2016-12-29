@@ -678,11 +678,11 @@ def test_filter_out_travelling_day():
 
     filtered_nodes = motif.filter_out_travelling_day(df,
                                                      nodes,
-                                                     trav_dist_th=th-100)
+                                                     trav_dist_th=th - 100)
     assert len(filtered_nodes) == 0
     filtered_nodes = motif.filter_out_travelling_day(df,
                                                      nodes,
-                                                     trav_dist_th=th+100)
+                                                     trav_dist_th=th + 100)
     assert len(filtered_nodes) == 1
 
 
