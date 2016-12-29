@@ -43,7 +43,7 @@ def compute_gyration(data,
 
     Returns:
     --------
-    (radius of gyration): float
+    float
         Radius of gyration in meters.
         Return np.nan is k is greater than the number of different
         visited locations.
@@ -101,7 +101,7 @@ def compute_rec_ratio(data, k):
     Returns:
     --------
 
-    (recurrent ratio): float
+    float
         Recurrent ratio.
         If k is larger than the number of different visited
         locations, return np.nan.
