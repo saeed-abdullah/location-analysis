@@ -623,6 +623,10 @@ def test_insert_home_location():
     nodes = motif.insert_home_location(df, nodes, home='dr5xg57')
     assert nodes[0][1].ix[0, 'node'] == 'dr5rw5u'
 
+    nodes[0][1].ix[0, 'node'] = np.nan
+    nodes = motif.insert_home_location(df, nodes, home='dr5xg57')
+    assert nodes[0][1].ix[0, 'node'] == 'dr5xg57'
+
 
 def test_filter_days_without_round_trip():
     # a day without round trip
