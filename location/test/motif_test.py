@@ -651,6 +651,7 @@ def test_filter_days_without_round_trip():
 
     nodes = motif.filter_days_without_round_trip(nodes)
     assert len(nodes) == 1
+    assert nodes[0][0] == timestamp
 
 
 def test_filter_out_travelling_day():
