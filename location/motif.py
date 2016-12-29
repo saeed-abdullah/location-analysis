@@ -831,8 +831,8 @@ def compute_nodes(df,
     return df, nodes
 
 
-def filter_out_invalid_nodes(nodes,
-                             valid_time_slot=8):
+def filter_inadequate_nodes(nodes,
+                            valid_time_slot=8):
     """
     Discard nodes whose valid time slot is lower
     than the given threshold.

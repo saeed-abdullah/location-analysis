@@ -579,7 +579,7 @@ def test_compute_regularity():
     assert reg_computed2.iloc[0] == pytest.approx(1)
 
 
-def test_filter_out_invalid_nodes():
+def test_filter_inadequate_nodes():
     node = pd.DataFrame()
     timestamp = pd.Timestamp('2016-01-07 03:30:00-0500')
     node['time'] = pd.date_range(timestamp, periods=48, freq='30min')
@@ -596,7 +596,7 @@ def test_filter_out_invalid_nodes():
     node['node'] = n.copy()
     nodes.append((timestamp, node.copy()))
 
-    nodes = motif.filter_out_invalid_nodes(nodes)
+    nodes = motif.filter_inadequate_nodes(nodes)
 
     assert len(nodes) == 1
 
