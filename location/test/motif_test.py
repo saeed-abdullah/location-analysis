@@ -624,7 +624,7 @@ def test_insert_home_location():
     assert nodes[0][1].ix[0, 'node'] == 'dr5rw5u'
 
 
-def test_filter_round_trip():
+def test_filter_days_without_round_trip():
     # a day without round trip
     timestamp = pd.Timestamp('2016-01-07 03:30:00-0500')
     node = pd.DataFrame()
@@ -645,7 +645,7 @@ def test_filter_round_trip():
     node['node'] = n.copy()
     nodes.append((timestamp, node.copy()))
 
-    nodes = motif.filter_round_trip(nodes)
+    nodes = motif.filter_days_without_round_trip(nodes)
     assert len(nodes) == 1
 
 

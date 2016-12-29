@@ -920,8 +920,8 @@ def insert_home_location(data,
     return filtered_nodes
 
 
-def filter_round_trip(nodes,
-                      sr_col='stay_region'):
+def filter_days_without_round_trip(nodes,
+                                   sr_col='stay_region'):
     """
     Select daily nodes that start and end at the same location.
 
@@ -1089,7 +1089,7 @@ def generate_motifs(data,
         nodes = insert_home_location(data, nodes, home=home)
 
     if round_trip:
-        nodes = filter_round_trip(nodes)
+        nodes = filter_days_without_round_trip(nodes)
 
     motifs = []
 
