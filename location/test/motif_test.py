@@ -684,6 +684,7 @@ def test_filter_out_travelling_day():
                                                      nodes,
                                                      trav_dist_th=th + 100)
     assert len(filtered_nodes) == 1
+    assert filtered_nodes[0][0] == timestamp
 
 
 def test_filter_weekday():
