@@ -614,7 +614,7 @@ def test_insert_home_location():
     node['time'] = pd.date_range(timestamp, periods=48, freq='30min')
     n = [np.nan] * 40
     n.extend(['dr5xg5g'] * 8)
-    node['node'] = n.copy()
+    node['node'] = n
     nodes = [(timestamp, node.copy())]
 
     nodes = motif.insert_home_location(df, nodes)

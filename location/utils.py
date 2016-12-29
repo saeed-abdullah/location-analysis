@@ -9,7 +9,6 @@
 import pandas as pd
 import numpy as np
 import math
-from copy import deepcopy, copy
 from collections import Counter
 from geopy.distance import vincenty
 import geohash

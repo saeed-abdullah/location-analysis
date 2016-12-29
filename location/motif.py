@@ -853,7 +853,7 @@ def filter_inadequate_nodes(nodes,
     filtered_nodes = []
     for node in nodes:
         if len(node[1].node.dropna()) >= valid_time_slot:
-            filtered_nodes.append(deepcopy(node))
+            filtered_nodes.append(node)
 
     return filtered_nodes
 
@@ -943,7 +943,7 @@ def filter_round_trip(nodes,
     for node in nodes:
         list_nodes = node[1].node.dropna()
         if list_nodes.iloc[0] == list_nodes.iloc[-1]:
-            filtered_nodes.append(deepcopy(node))
+            filtered_nodes.append(node)
 
     return filtered_nodes
 
@@ -971,7 +971,7 @@ def filter_weekday(nodes,
     filtered_nodes = []
     for node in nodes:
         if node[0].weekday() in dayofweek:
-            filtered_nodes.append(deepcopy(node))
+            filtered_nodes.append(node)
 
     return filtered_nodes
 
@@ -1031,7 +1031,7 @@ def filter_out_travelling_day(data,
         dist_list = [vincenty(geohash.decode(x), geohash.decode(home)).m
                      for x in different_visited_locations]
         if all(d <= trav_dist_th for d in dist_list):
-            filtered_nodes.append(deepcopy(node))
+            filtered_nodes.append(node)
 
     return filtered_nodes
 
