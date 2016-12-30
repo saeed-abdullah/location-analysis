@@ -22,7 +22,7 @@ from pytest import approx
 import geohash
 from geopy.distance import vincenty
 
-from location import motif, utils
+from location import motif
 
 
 def get_nearby_point(lon, lat, dist_m, bearing=0):
