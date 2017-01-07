@@ -751,3 +751,28 @@ def test_generate_motifs():
     expected_graph3 = nx.from_numpy_matrix(np.array(adjacency_matrix.copy()),
                                            create_using=nx.MultiDiGraph())
     assert nx.is_isomorphic(motifs[0]['graph'], expected_graph3)
+
+
+def test_get_home_location():
+    timestamp = pd.Timestamp('2016-01-07 03:30:00-0500')
+    df = pd.DataFrame()
+    stay_region = ['dr5rw5u'] * 20
+    stay_region.extend(['dr5xg57'] * 70)
+    df['stay_region'] = stay_region
+    df['time'] = pd.date_range(timestamp, periods=90, freq='15min')
+    df = df.set_index('time')
+
+    home = motif.get_home_location(df)
+    assert home == 'dr5rw5u'
+
+    timestamp = pd.Timestamp('2016-01-07 03:30:00-0500')
+    df = pd.DataFrame()
+    stay_region = [np.nan] * 20
+    stay_region.extend(['dr5xg57'] * 50)
+    stay_region.extend([np.nan] * 20)
+    df['stay_region'] = stay_region
+    df['time'] = pd.date_range(timestamp, periods=90, freq='15min')
+    df = df.set_index('time')
+
+    home = motif.get_home_location(df)
+    assert home is None

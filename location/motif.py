@@ -858,6 +858,41 @@ def filter_inadequate_nodes(nodes,
     return filtered_nodes
 
 
+def get_home_location(loc_data, sr_col='stay_region'):
+    """
+    Get the home location based on the assumption that
+    the most frequently visited location from
+    0:00 to 6:00 is the home location.
+    If there is no data in that period, return None.
+
+    Parameters:
+    -----------
+    loc_data: DataFrame
+        Location data.
+
+    sr_col: str
+        Column name for stay region.
+        Default is 'stay_region'.
+
+    Returns:
+    ---------
+    home: str
+        Home location in geohash form.
+        None if there is no data from 0:00 to 6:00.
+    """
+    night_hours = list(range(6))
+    loc_data = loc_data.dropna()
+    night_locs = loc_data[loc_data.index.map(lambda z: z.hour in night_hours)]
+
+    # if no home location is detected,
+    # do not insert home location.
+    if len(night_locs) == 0:
+        return None
+
+    home = get_primary_location(night_locs[sr_col])
+    return home
+
+
 def insert_home_location(data,
                          nodes,
                          sr_col='stay_region',
