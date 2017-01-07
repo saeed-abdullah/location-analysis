@@ -1107,7 +1107,12 @@ def generate_motifs(data,
                 g.add_edge(list_nodes.iloc[i - 1], list_nodes.iloc[i])
         g = nx.freeze(g)
 
-        # add current timestamp to corresponding motif/graph
+        # Add current timestamp to corresponding motif/graph
+        # Motifs are directed graph representing daily networks
+        # that consist of set of visited locations and trips
+        # among them. The nodes and edges are unspecifed and
+        # interchangable, so two motifs are the same if the
+        # underlying graphs are isomorphic.
         found = False
         for item in motifs:
             if nx.is_isomorphic(item['graph'], g):
