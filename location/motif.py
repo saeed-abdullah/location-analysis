@@ -936,15 +936,7 @@ def insert_home_location(data,
 
     # find the home location
     if home is None:
-        night_hours = list(range(6))
-        night_locs = locs[locs.index.map(lambda z: z.hour in night_hours)]
-
-        # if no home location is detected,
-        # do not insert home location.
-        if len(night_locs) == 0:
-            return filtered_nodes
-
-        home = get_primary_location(night_locs[sr_col])
+        home = get_home_location(data)
 
     for node in filtered_nodes:
         # if the first time slot is missing,
@@ -1051,15 +1043,7 @@ def filter_out_travelling_day(data,
 
     # find the home location
     if home is None:
-        night_hours = list(range(6))
-        night_locs = locs[locs.index.map(lambda z: z.hour in night_hours)]
-
-        # if no home location is detected,
-        # do not insert home location.
-        if len(night_locs) == 0:
-            return filtered_nodes
-
-        home = get_primary_location(night_locs[sr_col])
+        home = get_home_location(data)
 
     for node in nodes:
         different_visited_locations = np.unique(node[1]['node'].dropna())
