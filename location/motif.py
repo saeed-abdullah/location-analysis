@@ -904,7 +904,7 @@ def insert_home_location(data,
 
     Home location is detected based on the
     assumption that the most frequently visited
-    location during :00 to 6:00 is the home location.
+    location during 0:00 to 6:00 is the home location.
 
     If home location can not be approximated using
     the location data, then do not insert home location.
