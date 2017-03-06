@@ -831,8 +831,8 @@ def compute_nodes(df,
     return df, nodes
 
 
-def filter_out_invalid_nodes(nodes,
-                             valid_time_slot=8):
+def filter_inadequate_nodes(nodes,
+                            valid_time_slot=8):
     """
     Discard nodes whose valid time slot is lower
     than the given threshold.
@@ -853,9 +853,44 @@ def filter_out_invalid_nodes(nodes,
     filtered_nodes = []
     for node in nodes:
         if len(node[1].node.dropna()) >= valid_time_slot:
-            filtered_nodes.append(deepcopy(node))
+            filtered_nodes.append(node)
 
     return filtered_nodes
+
+
+def get_home_location(loc_data, sr_col='stay_region'):
+    """
+    Get the home location based on the assumption that
+    the most frequently visited location from
+    0:00 to 6:00 is the home location.
+    If there is no data in that period, return None.
+
+    Parameters:
+    -----------
+    loc_data: DataFrame
+        Location data.
+
+    sr_col: str
+        Column name for stay region.
+        Default is 'stay_region'.
+
+    Returns:
+    ---------
+    home: str
+        Home location in geohash form.
+        None if there is no data from 0:00 to 6:00.
+    """
+    night_hours = list(range(6))
+    loc_data = loc_data.dropna()
+    night_locs = loc_data[loc_data.index.map(lambda z: z.hour in night_hours)]
+
+    # if no home location is detected,
+    # do not insert home location.
+    if len(night_locs) == 0:
+        return None
+
+    home = get_primary_location(night_locs[sr_col])
+    return home
 
 
 def insert_home_location(data,
@@ -869,7 +904,7 @@ def insert_home_location(data,
 
     Home location is detected based on the
     assumption that the most frequently visited
-    location during 24:00 to 6:00 is the home location.
+    location during 0:00 to 6:00 is the home location.
 
     If home location can not be approximated using
     the location data, then do not insert home location.
@@ -901,27 +936,19 @@ def insert_home_location(data,
 
     # find the home location
     if home is None:
-        night_hours = list(range(6))
-        night_locs = locs[locs.index.map(lambda z: z.hour in night_hours)]
-
-        # if no home location is detected,
-        # do not insert home location.
-        if len(night_locs) == 0:
-            return filtered_nodes
-
-        home = get_primary_location(night_locs[sr_col])
+        home = get_home_location(data)
 
     for node in filtered_nodes:
         # if the first time slot is missing,
         # insert home location
-        if type(node[1].ix[0, 'node']) is not str:
+        if pd.isnull(node[1].ix[0, 'node']):
             node[1].ix[0, 'node'] = home
 
     return filtered_nodes
 
 
-def filter_round_trip(nodes,
-                      sr_col='stay_region'):
+def filter_days_without_round_trip(nodes,
+                                   sr_col='stay_region'):
     """
     Select daily nodes that start and end at the same location.
 
@@ -943,7 +970,7 @@ def filter_round_trip(nodes,
     for node in nodes:
         list_nodes = node[1].node.dropna()
         if list_nodes.iloc[0] == list_nodes.iloc[-1]:
-            filtered_nodes.append(deepcopy(node))
+            filtered_nodes.append(node)
 
     return filtered_nodes
 
@@ -971,7 +998,7 @@ def filter_weekday(nodes,
     filtered_nodes = []
     for node in nodes:
         if node[0].weekday() in dayofweek:
-            filtered_nodes.append(deepcopy(node))
+            filtered_nodes.append(node)
 
     return filtered_nodes
 
@@ -1016,22 +1043,14 @@ def filter_out_travelling_day(data,
 
     # find the home location
     if home is None:
-        night_hours = list(range(6))
-        night_locs = locs[locs.index.map(lambda z: z.hour in night_hours)]
-
-        # if no home location is detected,
-        # do not insert home location.
-        if len(night_locs) == 0:
-            return filtered_nodes
-
-        home = get_primary_location(night_locs[sr_col])
+        home = get_home_location(data)
 
     for node in nodes:
         different_visited_locations = np.unique(node[1]['node'].dropna())
         dist_list = [vincenty(geohash.decode(x), geohash.decode(home)).m
                      for x in different_visited_locations]
         if all(d <= trav_dist_th for d in dist_list):
-            filtered_nodes.append(deepcopy(node))
+            filtered_nodes.append(node)
 
     return filtered_nodes
 
@@ -1089,7 +1108,7 @@ def generate_motifs(data,
         nodes = insert_home_location(data, nodes, home=home)
 
     if round_trip:
-        nodes = filter_round_trip(nodes)
+        nodes = filter_days_without_round_trip(nodes)
 
     motifs = []
 
@@ -1107,7 +1126,12 @@ def generate_motifs(data,
                 g.add_edge(list_nodes.iloc[i - 1], list_nodes.iloc[i])
         g = nx.freeze(g)
 
-        # add current timestamp to corresponding motif/graph
+        # Add current timestamp to corresponding motif/graph
+        # Motifs are directed graph representing daily networks
+        # that consist of set of visited locations and trips
+        # among them. The nodes and edges are unspecifed and
+        # interchangable, so two motifs are the same if the
+        # underlying graphs are isomorphic.
         found = False
         for item in motifs:
             if nx.is_isomorphic(item['graph'], g):
