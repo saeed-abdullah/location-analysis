@@ -303,3 +303,87 @@ def displacement(data,
             displace.append(vincenty(loc_list[i-1],
                                      loc_list[i]).m)
     return displace
+
+
+def wait_time(data,
+              cluster='cluster',
+              time_c='index'):
+    """
+    Calculate the waiting time between
+    displacements.
+
+    Parameters:
+    -----------
+    data: dataframe
+        Location data.
+
+    cluster: str
+        Cluster id column.
+        Defaults to 'cluster'.
+
+    time_c: str
+        Time column.
+        Defaults to 'index', in which
+        case the index is a timeindex series.
+
+    Returns:
+    --------
+    waittime: list
+        List of waiting time in minute.
+
+    cluster_wt: dict
+        Waiting time for each location cluster.
+        {cluster_id: waiting time}
+    """
+    data = data.copy()
+    cluster_col = data[cluster].values
+    if time_c == 'index':
+        time_col = data.index
+    else:
+        time_col = data[time_c]
+    data = pd.DataFrame()
+    data['time'] = time_col
+    data[cluster] = cluster_col
+    waittime = []
+    if len(data) <= 1:
+        return waittime, {}
+
+    # compute approximate time spent at each timestamp
+    data['td'] = ((data[['time']].shift(-1) - data[['time']]) +
+                  (data[['time']] - data[['time']].shift())) / 2
+    data.ix[0, 'td'] = (data.ix[1, 'time'] - data.ix[0, 'time']) / 2
+    l = len(data)
+    data.ix[l-1, 'td'] = (data.ix[l - 1, 'time'] -
+                          data.ix[l - 2, 'time']) / 2
+
+    # merge waiting time if two or more consecutive
+    # locations belong to the same location cluster
+    i = 0
+    while i < len(data) and pd.isnull(data.ix[i, cluster]):
+        i += 1
+    curr_c = [i]
+    for p in range(i + 1, l):
+        curr_cluster = data.ix[p, cluster]
+        if pd.isnull(curr_cluster):
+            if len(curr_c) == 0:
+                continue
+            wt = data.loc[data.index.isin(curr_c), 'td'].sum()
+            waittime.append(wt.seconds / 60)
+            curr_c = []
+        else:
+            if len(curr_c) == 0:
+                curr_c.append(p)
+            elif data.ix[curr_c[-1], cluster] != curr_cluster:
+                wt = data.loc[data.index.isin(curr_c), 'td'].sum()
+                waittime.append(wt.seconds / 60)
+                curr_c = [p]
+            else:
+                curr_c.append(p)
+    if len(curr_c) > 0:
+        wt = data.loc[data.index.isin(curr_c), 'td'].sum()
+        waittime.append(wt.seconds / 60)
+    cluster_wt = {}
+    grouped = data.groupby(cluster)
+    for i, g in grouped:
+        cluster_wt[i] = g['td'].sum().seconds / 60
+    return waittime, cluster_wt
