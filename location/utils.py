@@ -207,3 +207,99 @@ def compute_regularity(data, sr_col='stay_region'):
     reg = reg.set_index(['weekday', 'hour'])
     reg = reg.sort_index()
     return reg
+
+
+def displacement(data,
+                 lat='latitude',
+                 lon='longitude',
+                 cluster='cluster',
+                 cluster_mapping=None):
+    """
+    Calculate the displacement of the location data.
+
+    Parameters:
+    -----------
+    data: dataframe
+        Location data.
+
+    cluster: str
+        Column cluster ids.
+        Default value is cluster.
+
+    lat, lon: str
+        Columns of latitude, and longitude.
+        Default values are 'latitude', and
+        'longitude' respectively.
+
+    cluster_mapping: dict
+        A mapping from cluster id to
+        gps coordinates.
+        Defaults to None, in which case
+        use latitude and longitude given
+        in location data.
+
+    Returns:
+    --------
+    displace: list
+        List of displacements in meters.
+    """
+    data = data.loc[~pd.isnull(data[cluster])]
+    displace = []
+    if len(data) <= 1:
+        return displace
+    data = data.reset_index()
+    if cluster_mapping is None:
+        prev_idx = 0
+        prev_cluster = data.ix[0, cluster]
+        loc_list = []
+
+        # get location history
+        for i in range(1, len(data)):
+            curr_cluster = data.ix[i, cluster]
+            if curr_cluster != prev_cluster:
+                tmp_df = data.loc[(data.index >= prev_idx) &
+                                  (data.index <= i - 1)]
+                coord = motif.get_geo_center(df=tmp_df,
+                                             lat_c=lat,
+                                             lon_c=lon)
+                loc_list.append((coord['latitude'],
+                                 coord['longitude']))
+                prev_idx = i
+                prev_cluster = curr_cluster
+
+        # handle last location
+        tmp_df = data.ix[(data.index >= prev_idx) &
+                         (data.index <= len(data) - 1)]
+        coord = motif.get_geo_center(df=tmp_df,
+                                     lat_c=lat,
+                                     lon_c=lon)
+        loc_list.append((coord['latitude'],
+                         coord['longitude']))
+
+        # compute displacements
+        if len(loc_list) <= 1:
+            return displace
+        for i in range(1, len(loc_list)):
+            displace.append(vincenty(loc_list[i-1],
+                                     loc_list[i]).m)
+    else:
+        prev_cluster = data.ix[0, cluster]
+        loc_list = []
+
+        # get location history
+        for i in range(1, len(data)):
+            curr_cluster = data.ix[i, cluster]
+            if curr_cluster != prev_cluster:
+                loc_list.append(cluster_mapping[prev_cluster])
+                prev_cluster = curr_cluster
+
+        # handle last location
+        loc_list.append((cluster_mapping[prev_cluster]))
+
+        # compute displacements
+        if len(loc_list) <= 1:
+            return displace
+        for i in range(1, len(loc_list)):
+            displace.append(vincenty(loc_list[i-1],
+                                     loc_list[i]).m)
+    return displace
