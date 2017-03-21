@@ -514,3 +514,44 @@ def home_stay(data,
         else:
             hs = cwt[home_loc]
     return hs
+
+
+def trans_time(data,
+               cluster_col='cluster',
+               time_col='index'):
+    """
+    Calculate the waiting time between
+    displacements.
+
+    Parameters:
+    -----------
+    data: dataframe
+        Location data.
+
+    cluster: str
+        Cluster id column.
+        Defaults to 'cluster'.
+
+    time_c: str
+        Time column.
+        Defaults to 'index', in which
+        case the index is a timeindex series.):
+
+    Returns:
+    --------
+    tt: float
+        Transition time.
+    """
+    wt, cwt = wait_time(data,
+                        cluster=cluster_col,
+                        time_c=time_col)
+    if len(wt) == 0:
+        tt = np.nan
+    else:
+        if time_col == 'index':
+            time_c = data.index
+        else:
+            time_c = data[time_col]
+        total_time = (max(time_c) - min(time_c)).seconds / 60
+        tt = total_time - sum(wt)
+    return tt

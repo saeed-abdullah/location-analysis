@@ -372,3 +372,24 @@ def test_home_stay():
                   pd.to_datetime('2015-04-14 08:00:00')]
     hs = utils.home_stay(df, 'dr5xef2', time_col='time')
     assert hs == pytest.approx(20, 0.00001)
+
+
+def test_trans_time():
+    df = pd.DataFrame(columns=['cluster', 'time'])
+    tt = utils.trans_time(df, time_col='time')
+    assert np.isnan(tt)
+
+    df = pd.DataFrame(columns=['cluster', 'time'])
+    df['cluster'] = ['dr5xejs', np.nan]
+    df['time'] = [pd.to_datetime('2015-04-14 07:40:00'),
+                  pd.to_datetime('2015-04-14 08:00:00')]
+    tt = utils.trans_time(df, time_col='time')
+    assert tt == pytest.approx(10, 0.00001)
+
+    df = pd.DataFrame(columns=['cluster', 'time'])
+    df['cluster'] = ['dr5xejs', np.nan]
+    df['time'] = [pd.to_datetime('2015-04-14 07:40:00'),
+                  pd.to_datetime('2015-04-14 08:00:00')]
+    df = df.set_index('time')
+    tt = utils.trans_time(df)
+    assert tt == pytest.approx(10, 0.00001)
