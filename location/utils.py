@@ -473,3 +473,44 @@ def norm_entropy(data,
         else:
             nent = ent / math.log(len(unique_loc))
     return nent
+
+
+def home_stay(data,
+              home_loc,
+              cluster_col='cluster',
+              time_col='index'):
+    """
+    Compute the time spent at home location.
+
+    Parameters:
+    -----------
+    data: DataFrame
+        Location data.
+
+    home_loc: str or int
+        Home location cluster.
+
+    cluster_col: str
+        Location cluster column.
+        Default value is 'cluster'.
+
+    time_col: str
+        Timestamp column.
+        Default value is 'index'.
+
+    Returns:
+    --------
+    hs: float
+        Time spent at home location.
+    """
+    if home_loc not in data[cluster_col].values:
+        hs = np.nan
+    else:
+        wt, cwt = wait_time(data,
+                            cluster=cluster_col,
+                            time_c=time_col)
+        if len(wt) == 0:
+            hs = np.nan
+        else:
+            hs = cwt[home_loc]
+    return hs

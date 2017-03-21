@@ -334,3 +334,41 @@ def test_norm_entropy():
                   pd.to_datetime('2015-04-14 08:00:00')]
     ent = utils.norm_entropy(df, time_col='time')
     assert ent == pytest.approx(1.0114042 / math.log(3), 0.00001)
+
+
+def test_home_stay():
+    df = pd.DataFrame(columns=['cluster', 'time'])
+    hs = utils.home_stay(df, 'abc', time_col='time')
+    assert np.isnan(hs)
+
+    df = pd.DataFrame(columns=['cluster', 'time'])
+    df['cluster'] = ['dr5xejs', np.nan]
+    df['time'] = [pd.to_datetime('2015-04-14 07:46:43'),
+                  pd.to_datetime('2015-04-14 07:56:43')]
+    hs = utils.home_stay(df, 'abc', time_col='time')
+    assert np.isnan(hs)
+
+    df = pd.DataFrame(columns=['cluster', 'time'])
+    df['cluster'] = ['dr5xejs']
+    df['time'] = [pd.to_datetime('2015-04-14 07:46:43')]
+    hs = utils.home_stay(df, 'dr5xejs', time_col='time')
+    assert np.isnan(hs)
+
+    df = pd.DataFrame(columns=['cluster', 'time'])
+    df['cluster'] = ['dr5xejs', 'dr5xejs']
+    df['time'] = [pd.to_datetime('2015-04-14 02:00:00'),
+                  pd.to_datetime('2015-04-14 03:00:00')]
+    hs = utils.home_stay(df, 'dr5xejs', time_col='time')
+    assert hs == pytest.approx(60, 0.00001)
+
+    df = pd.DataFrame(columns=['cluster', 'time'])
+    df['cluster'] = ['dr5xejs']
+    df['time'] = [pd.to_datetime('2015-04-14 07:46:43')]
+    df = pd.DataFrame(columns=['cluster', 'time'])
+    df['cluster'] = ['dr5xejs', 'dr5xejs', 'dr5xef2', 'dr5xefq']
+    df['time'] = [pd.to_datetime('2015-04-14 07:00:00'),
+                  pd.to_datetime('2015-04-14 07:20:00'),
+                  pd.to_datetime('2015-04-14 07:40:00'),
+                  pd.to_datetime('2015-04-14 08:00:00')]
+    hs = utils.home_stay(df, 'dr5xef2', time_col='time')
+    assert hs == pytest.approx(20, 0.00001)
