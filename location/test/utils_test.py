@@ -407,3 +407,19 @@ def test_travel_dist():
     df['latitude'] = [12.3, 43.8, 32.5]
     df['longitude'] = [-45.6, 72.9, 12.9]
     assert utils.travel_dist(df) == pytest.approx(16520745.44722021, 0.00001)
+
+
+def test_total_dist():
+    df = pd.DataFrame([(12.3, -45.6),
+                       (43.8, 72.9),
+                       (32.5, 12.9)],
+                      columns=['latitude', 'longitude'])
+    assert utils.total_dist(df) == pytest.approx(16520745.44722021, 0.00001)
+
+    cluster_map = {1: (12.3, -45.6),
+                   2: (43.8, 72.9),
+                   3: (32.5, 12.9)}
+    df = pd.DataFrame([1, 2, 3],
+                      columns=['cluster'])
+    td = utils.total_dist(df, cluster_mapping=cluster_map)
+    assert td == pytest.approx(16520745.44722021, 0.00001)

@@ -587,3 +587,45 @@ def travel_dist(data,
             dist += vincenty((data.ix[i-1, lat], data.ix[i-1, lon]),
                              (data.ix[i, lat], data.ix[i, lon])).m
     return dist
+
+
+def total_dist(data,
+               cluster_col='cluster',
+               lat_col='latitude',
+               lon_col='longitude',
+               cluster_mapping=None):
+    """
+    The sum of travel distance.
+
+    Parameters:
+    -----------
+    data: DataFrame
+        Location data.
+
+    cluster_col: str
+        Location cluster id column.
+
+    lat_col, lon_col: str
+        Latidue and longitude of the cluster
+        locations.
+
+    cluster_mapping: dict
+        A dictionary storing the coordinates
+        of location cluster locations.
+
+    Returns:
+    --------
+    td: float
+        Total distance.
+    """
+    if cluster_mapping is None:
+        td = travel_dist(data=data,
+                         lat=lat_col,
+                         lon=lon_col)
+    else:
+        loc = [cluster_mapping[c]
+               for c in data[cluster_col].dropna()]
+        loc = pd.DataFrame(loc,
+                           columns=['latitude', 'longitude'])
+        td = travel_dist(data=loc)
+    return td
