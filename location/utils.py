@@ -387,3 +387,49 @@ def wait_time(data,
     for i, g in grouped:
         cluster_wt[i] = g['td'].sum().seconds / 60
     return waittime, cluster_wt
+
+
+def entropy(data,
+            cluster_col='cluster',
+            time_col='index'):
+    """
+    Calculate entropy, a measure of
+    the variability in the time that
+    participants spend in the different
+    locations recorded.
+    【Palmius et al, 2016]
+
+    Parameters:
+    -----------
+    data: dataframe
+        Location data.
+
+    cluster_col: str
+        Location cluster column name.
+
+    time_col: str
+        Timestamp column name.
+
+    Returns:
+    --------
+    ent: float
+        Entropy.
+        Return numpy.nan if entropy can
+        not be calculated.
+    """
+    if len(data) == 0:
+        return np.nan
+    if time_col == 'index':
+        time_c = data.index
+    else:
+        time_c = data[time_col]
+    total_time = (max(time_c) - min(time_c)).seconds / 60
+    wt, cwt = wait_time(data, cluster_col, time_col)
+    if len(wt) == 0:
+        return np.nan
+    tmp = 0
+    for k in cwt:
+        p = cwt[k] / total_time
+        tmp += p * math.log(p)
+    ent = -tmp
+    return ent

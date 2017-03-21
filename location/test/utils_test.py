@@ -267,3 +267,36 @@ def test_wait_time():
     assert ('dr5xejs' in cwt) and ('dr5xef2' in cwt)
     assert cwt['dr5xejs'] == pytest.approx(34, 0.00001)
     assert cwt['dr5xef2'] == pytest.approx(35, 0.00001)
+
+
+def test_entropy():
+    df = pd.DataFrame(columns=['cluster', 'time'])
+    assert np.isnan(utils.entropy(df, time_col='time'))
+
+    df = pd.DataFrame(columns=['cluster', 'time'])
+    df['cluster'] = ['dr5xejs']
+    df['time'] = [pd.to_datetime('2015-04-14 07:46:43')]
+    assert np.isnan(utils.entropy(df, time_col='time'))
+
+    df = pd.DataFrame(columns=['cluster', 'time'])
+    df['cluster'] = ['dr5xejs']
+    df['time'] = [pd.to_datetime('2015-04-14 07:46:43')]
+    df = pd.DataFrame(columns=['cluster', 'time'])
+    df['cluster'] = ['dr5xejs', 'dr5xejs', 'dr5xef2']
+    df['time'] = [pd.to_datetime('2015-04-14 07:00:00'),
+                  pd.to_datetime('2015-04-14 07:20:00'),
+                  pd.to_datetime('2015-04-14 07:40:00')]
+    ent = utils.entropy(df, time_col='time')
+    assert ent == pytest.approx(0.5623351446188083, 0.00001)
+
+    df = pd.DataFrame(columns=['cluster', 'time'])
+    df['cluster'] = ['dr5xejs']
+    df['time'] = [pd.to_datetime('2015-04-14 07:46:43')]
+    df = pd.DataFrame(columns=['cluster', 'time'])
+    df['cluster'] = ['dr5xejs', 'dr5xejs', 'dr5xef2', 'dr5xefq']
+    df['time'] = [pd.to_datetime('2015-04-14 07:00:00'),
+                  pd.to_datetime('2015-04-14 07:20:00'),
+                  pd.to_datetime('2015-04-14 07:40:00'),
+                  pd.to_datetime('2015-04-14 08:00:00')]
+    ent = utils.entropy(df, time_col='time')
+    assert ent == pytest.approx(1.0114042647073516, 0.00001)
