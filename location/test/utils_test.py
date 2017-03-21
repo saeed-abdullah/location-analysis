@@ -393,3 +393,17 @@ def test_trans_time():
     df = df.set_index('time')
     tt = utils.trans_time(df)
     assert tt == pytest.approx(10, 0.00001)
+
+
+def test_travel_dist():
+    df = pd.DataFrame(columns=['latitude', 'longitude'])
+    assert np.isnan(utils.travel_dist(df))
+
+    df = pd.DataFrame([[20, 30]],
+                      columns=['latitude', 'longitude'])
+    assert utils.travel_dist(df) == pytest.approx(0, 0.001)
+
+    df = pd.DataFrame()
+    df['latitude'] = [12.3, 43.8, 32.5]
+    df['longitude'] = [-45.6, 72.9, 12.9]
+    assert utils.travel_dist(df) == pytest.approx(16520745.44722021, 0.00001)

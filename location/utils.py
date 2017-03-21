@@ -555,3 +555,35 @@ def trans_time(data,
         total_time = (max(time_c) - min(time_c)).seconds / 60
         tt = total_time - sum(wt)
     return tt
+
+
+def travel_dist(data,
+                lat='latitude',
+                lon='longitude'):
+    """
+    Compute travel distance in meters.
+
+    Parameters:
+    -----------
+    data: DataFrame
+        Location data.
+
+    lat, lon: str
+        Columns for latitude and longitude.
+        Default values are 'latitude' and
+        'longitude' respectively.
+
+    Returns:
+    dist: float
+        Travel distance.
+    """
+    data = data[[lat, lon]].dropna()
+    dist = 0
+    if len(data) == 0:
+        return np.nan
+    else:
+        data = data.reset_index()
+        for i in range(1, len(data)):
+            dist += vincenty((data.ix[i-1, lat], data.ix[i-1, lon]),
+                             (data.ix[i, lat], data.ix[i, lon])).m
+    return dist
