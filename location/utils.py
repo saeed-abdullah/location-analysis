@@ -629,3 +629,61 @@ def total_dist(data,
                            columns=['latitude', 'longitude'])
         td = travel_dist(data=loc)
     return td
+
+
+def max_dist(data,
+             cluster_col='cluster',
+             lat_col='latitude',
+             lon_col='longitude',
+             cluster_mapping=None):
+    """
+    Compute the maximum distance between two locations.
+
+    Parameters:
+    -----------
+    data: DataFrame
+        Location data.
+
+    cluster_col: str
+        Location cluster id column.
+
+    lat_col, lon_col: str
+        Latidue and longitude of the cluster
+        locations.
+
+    cluster_mapping: dict
+        A dictionary storing the coordinates
+        of location cluster locations.
+
+    Returns:
+    --------
+    max_dist: float
+        Maximum distance between two locations in meters.
+    """
+    data = data.loc[~pd.isnull(data[cluster_col])]
+    if len(data) == 0:
+        return np.nan
+    locations = np.unique(data[cluster_col])
+    if len(locations) == 1:
+        return 0
+    locations_coord = []
+    # calculate coordinates
+    if cluster_mapping is None:
+        for l in locations:
+            df = data.loc[data[cluster_col] == l]
+            coord = motif.get_geo_center(df=df,
+                                         lat_c=lat_col,
+                                         lon_c=lon_col)
+            coord = (coord['latitude'], coord['longitude'])
+            locations_coord.append(coord)
+    else:
+        for l in locations:
+            locations_coord.append(cluster_mapping[l])
+    # find maximum distance
+    max_dist = 0
+    for i in range(len(locations) - 1):
+        for j in range(i + 1, len(locations)):
+            d = vincenty(locations_coord[i], locations_coord[j]).m
+            if d > max_dist:
+                max_dist = d
+    return max_dist
