@@ -687,3 +687,39 @@ def max_dist(data,
             if d > max_dist:
                 max_dist = d
     return max_dist
+
+
+def num_trips(data,
+              cluster_col='cluster'):
+    """
+    Compute the number of trips in the
+    location data.
+
+    Parameters:
+    -----------
+    data: DataFrame
+        location data.
+
+    cluster_col: str
+        Location cluster column.
+        Default value is 'cluster'.
+
+    Returns:
+    --------
+    n_trip: int
+        Number of trips.
+    """
+    data = data.loc[~pd.isnull(data[cluster_col])]
+    if len(data) == 0:
+        return np.nan
+    data = data.reset_index()
+    p = data.ix[0, cluster_col]   # previous location
+    n_trip = 0
+    for i in range(1, len(data)):
+        c = data.ix[i, cluster_col]   # current location
+        if p == c:
+            continue
+        else:
+            n_trip += 1
+            p = c
+    return n_trip

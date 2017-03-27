@@ -442,3 +442,33 @@ def test_max_dist():
                         columns=['latitude', 'longitude', 'cluster'])
     d = utils.max_dist(data)
     assert d == pytest.approx(11233331.835309023, 0.00001)
+
+
+def test_num_trips():
+    df = pd.DataFrame(columns=['cluster'])
+    n = utils.num_trips(df)
+    assert np.isnan(n)
+
+    df = pd.DataFrame([[1],
+                       [1],
+                       [1]],
+                      columns=['cluster'])
+    n = utils.num_trips(df)
+    assert n == 0
+
+    df = pd.DataFrame([[1],
+                       [np.nan],
+                       [2]],
+                      columns=['cluster'])
+    n = utils.num_trips(df)
+    assert n == 1
+
+    df = pd.DataFrame([[1],
+                       [1],
+                       [np.nan],
+                       [2],
+                       [1],
+                       [np.nan]],
+                      columns=['cluster'])
+    n = utils.num_trips(df)
+    assert n == 2
