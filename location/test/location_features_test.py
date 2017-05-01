@@ -172,3 +172,15 @@ def max_dist(data,
                 max_dist = d
 
     return max_dist
+
+
+def test_num_clusters():
+    df = pd.DataFrame([np.nan, np.nan],
+                      columns=['cluster'])
+    n = lf.num_clusters(df)
+    assert n == 0
+
+    df = pd.DataFrame([np.nan, 1, 1, 2, 4, 4, 9, 9, 4],
+                      columns=['cluster'])
+    n = lf.num_clusters(df)
+    assert n == 4

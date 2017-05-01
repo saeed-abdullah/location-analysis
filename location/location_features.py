@@ -129,3 +129,29 @@ def test_max_dist():
                         columns=['latitude', 'longitude', 'cluster'])
     d = lf.max_dist(data)
     assert d == pytest.approx(11233331.835309023, 0.00001)
+
+
+def num_clusters(data, cluster_col='cluster'):
+    """
+    Compute the number of location clusters, which is
+    the number of different places visited.
+
+    Parameters:
+    -----------
+    data: DataFrame
+        Location data.
+
+    cluster_col: str
+        Location cluster id.
+
+    Returns:
+    --------
+    n: int
+        Number of clusters.
+    """
+    data = data[[cluster_col]].dropna()
+    if len(data) == 0:
+        return 0
+    else:
+        n = len(np.unique(data))
+        return n
