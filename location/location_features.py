@@ -521,3 +521,56 @@ def loc_var(data,
     else:
         lv = np.nan
     return lv
+
+
+def home_stay(data,
+              home_loc,
+              cluster_col='cluster',
+              time_col='index',
+              wait_time_v=None):
+    """
+    Compute the time spent at home location.
+    Time is in seconds.
+
+    Parameters:
+    -----------
+    data: DataFrame
+        Location data.
+
+    home_loc: str or int
+        Home location cluster.
+
+    cluster_col: str
+        Location cluster column.
+        Default value is 'cluster'.
+
+    time_col: str
+        Timestamp column.
+        Default value is 'index'.
+
+    wait_time_v: tuple
+        Returned values from wait_time().
+
+    Returns:
+    --------
+    hs: float
+        Time spent at home location.
+    """
+    if home_loc not in data[cluster_col].values:
+        hs = np.nan
+    else:
+
+        # compute waitting time if not provided
+        if wait_time_v is None:
+            wt, cwt = wait_time(data,
+                                cluster=cluster_col,
+                                time_c=time_col)
+        else:
+            wt, cwt = wait_time_v
+
+        if len(wt) == 0:
+            hs = np.nan
+        else:
+            hs = cwt[home_loc]
+
+    return hs

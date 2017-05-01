@@ -452,3 +452,41 @@ def test_loc_var():
     df['cluster'] = [np.nan, 1, 2, 1]
     v = lf.loc_var(df)
     assert v == pytest.approx(6.326348221044057, 0.00001)
+
+
+def test_home_stay():
+    df = pd.DataFrame(columns=['cluster', 'time'])
+    hs = lf.home_stay(df, 'abc', time_col='time')
+    assert np.isnan(hs)
+
+    df = pd.DataFrame(columns=['cluster', 'time'])
+    df['cluster'] = ['dr5xejs', np.nan]
+    df['time'] = [pd.to_datetime('2015-04-14 07:46:43'),
+                  pd.to_datetime('2015-04-14 07:56:43')]
+    hs = lf.home_stay(df, 'abc', time_col='time')
+    assert np.isnan(hs)
+
+    df = pd.DataFrame(columns=['cluster', 'time'])
+    df['cluster'] = ['dr5xejs']
+    df['time'] = [pd.to_datetime('2015-04-14 07:46:43')]
+    hs = lf.home_stay(df, 'dr5xejs', time_col='time')
+    assert np.isnan(hs)
+
+    df = pd.DataFrame(columns=['cluster', 'time'])
+    df['cluster'] = ['dr5xejs', 'dr5xejs']
+    df['time'] = [pd.to_datetime('2015-04-14 02:00:00'),
+                  pd.to_datetime('2015-04-14 03:00:00')]
+    hs = lf.home_stay(df, 'dr5xejs', time_col='time')
+    assert hs == 3600
+
+    df = pd.DataFrame(columns=['cluster', 'time'])
+    df['cluster'] = ['dr5xejs']
+    df['time'] = [pd.to_datetime('2015-04-14 07:46:43')]
+    df = pd.DataFrame(columns=['cluster', 'time'])
+    df['cluster'] = ['dr5xejs', 'dr5xejs', 'dr5xef2', 'dr5xefq']
+    df['time'] = [pd.to_datetime('2015-04-14 07:00:00'),
+                  pd.to_datetime('2015-04-14 07:20:00'),
+                  pd.to_datetime('2015-04-14 07:40:00'),
+                  pd.to_datetime('2015-04-14 08:00:00')]
+    hs = lf.home_stay(df, 'dr5xef2', time_col='time')
+    assert hs == 1200
