@@ -574,3 +574,58 @@ def home_stay(data,
             hs = cwt[home_loc]
 
     return hs
+
+
+def trans_time(data,
+               cluster_col='cluster',
+               time_col='index',
+               wait_time_v=None):
+    """
+    Calculate the total time spent in travelling
+    in seconds. This calculated by substracting the waitting
+    time from the total time.
+
+    Parameters:
+    -----------
+    data: dataframe
+        Location data.
+
+    cluster: str
+        Cluster id column.
+        Defaults to 'cluster'.
+
+    time_c: str
+        Time column.
+        Defaults to 'index', in which
+        case the index is a timeindex series.
+
+    wait_time_v: tuple
+        Returned values from wait_time().
+
+    Returns:
+    --------
+    tt: float
+        Transition time.
+    """
+    # compute waitting time if not provided
+    if wait_time_v is None:
+        wt, cwt = wait_time(data,
+                            cluster=cluster_col,
+                            time_c=time_col)
+    else:
+        wt, cwt = wait_time_v
+
+    if len(wt) == 0:
+        tt = np.nan
+    else:
+        if time_col == 'index':
+            time_c = data.index
+        else:
+            time_c = data[time_col]
+
+        # compute total time and subtract waitting time
+        # from it
+        total_time = (max(time_c) - min(time_c)).seconds
+        tt = total_time - sum(wt)
+
+    return tt
