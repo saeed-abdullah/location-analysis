@@ -440,3 +440,15 @@ def test_norm_entropy():
                   pd.to_datetime('2015-04-14 08:00:00')]
     ent = lf.norm_entropy(df, time_col='time')
     assert ent == pytest.approx(1.0114042 / math.log(3), 0.00001)
+
+
+def test_loc_var():
+    df = pd.DataFrame(columns=['latitude', 'longitude', 'cluster'])
+    v = lf.loc_var(df)
+    assert np.isnan(v)
+
+    df['latitude'] = [12, 13, 14, 40]
+    df['longitude'] = [24, 26, 29, 70]
+    df['cluster'] = [np.nan, 1, 2, 1]
+    v = lf.loc_var(df)
+    assert v == pytest.approx(6.326348221044057, 0.00001)

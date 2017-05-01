@@ -481,3 +481,43 @@ def norm_entropy(data,
             nent = ent / math.log(len(unique_loc))
 
     return nent
+
+
+def loc_var(data,
+            lat_col='latitude',
+            lon_col='longitude',
+            cluster_col='cluster'):
+    """
+    Location variance, an indication of
+    how much the individual is moving
+    between different locations based on
+    the sum of statistical variances in
+    the latitdue and longitude.
+    【Palmius et al, 2016]
+
+    Parameters:
+    -----------
+    data: dataframe
+        Location data.
+
+    lat_col, lon_col, cluster_col: str
+        Latitude, longitude, and cluster
+        columns. Default values are 'latitude',
+        'longitude', and 'cluster' respectively.
+
+    Returns:
+    --------
+    lv: float
+        Location variance.
+    """
+    data = data.loc[~pd.isnull(data[cluster_col])]
+    if len(data) != 0:
+        lat_v = np.var(data[lat_col])
+        lon_v = np.var(data[lon_col])
+        if abs(lat_v + lon_v) < 0.000000001:
+            lv = np.nan
+        else:
+            lv = math.log(lat_v + lon_v)
+    else:
+        lv = np.nan
+    return lv
