@@ -629,3 +629,51 @@ def trans_time(data,
         tt = total_time - sum(wt)
 
     return tt
+
+
+def total_dist(data,
+               cluster_col='cluster',
+               lat_col='latitude',
+               lon_col='longitude',
+               cluster_mapping=None,
+               dispmnt=None):
+    """
+    The sum of travel distance in meters.
+    This value computed by taking the sum
+    of all the values returned by displacement()
+    since the total distance is the sum of
+    all displacements/individual travel distance.
+
+    Parameters:
+    -----------
+    data: DataFrame
+        Location data.
+
+    cluster_col: str
+        Location cluster id column.
+
+    lat_col, lon_col: str
+        Latidue and longitude of the cluster
+        locations.
+
+    cluster_mapping: dict
+        A dictionary storing the coordinates
+        of location cluster locations.
+
+    dispmnt: list
+        List of displacements returned by displacement().
+
+    Returns:
+    --------
+    td: float
+        Total distance.
+    """
+    if dispmnt is None:
+        dispmnt = displacement(data=data,
+                               lat=lat_col,
+                               lon=lon_col,
+                               cluster=cluster_col,
+                               cluster_mapping=cluster_mapping)
+
+    td = sum(dispmnt)
+    return td
