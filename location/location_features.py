@@ -431,3 +431,53 @@ def entropy(data,
     ent = -tmp
 
     return ent
+
+
+def norm_entropy(data,
+                 cluster_col='cluster',
+                 time_col='index',
+                 ent=None):
+    """
+    Calculate normalized entropy, a variant of
+    the entropy fieature scaled to be in the
+    range [0, 1].
+    This value calcuated by dividing the original
+    entropy by the number of different locations.
+    【Palmius et al, 2016]
+
+    Parameters:
+    -----------
+    data: dataframe
+        Location data.
+
+    cluster_col: str
+        Location cluster column name.
+
+    time_col: str
+        Timestamp column name.
+
+    ent: float
+        Original entropy.
+
+    Returns:
+    --------
+    nent: float
+        Entropy.
+        Return numpy.nan if entropy can
+        not be calculated.
+    """
+    # compute original entropy if not provided
+    if ent is None:
+        ent = entropy(data, cluster_col, time_col)
+
+    if np.isnan(ent):
+        nent = np.nan
+    else:
+        unique_loc = np.unique(data[cluster_col].dropna())
+        dn = math.log(len(unique_loc))
+        if abs(dn - 0) < 0.000001:
+            return np.nan
+        else:
+            nent = ent / math.log(len(unique_loc))
+
+    return nent
