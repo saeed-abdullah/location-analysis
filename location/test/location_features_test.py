@@ -60,3 +60,47 @@ def test_gyrationradius():
     add_df['longitude'] = coordinate[1]
     df = pd.concat([df, add_df])
     assert lf.gyrationradius(df, k=2) == pytest.approx(expected, 0.01)
+
+
+def num_trips(data,
+              cluster_col='cluster'):
+    """
+    Compute the number of trips from one
+    location to another.
+
+    Parameters:
+    -----------
+    data: DataFrame
+        location data.
+
+    cluster_col: str
+        Location cluster column.
+        Default value is 'cluster'.
+
+    Returns:
+    --------
+    n_trip: int
+        Number of trips.
+    """
+    data = data.loc[~pd.isnull(data[cluster_col])]
+
+    if len(data) == 0:
+        return np.nan
+
+    data = data.reset_index()
+
+    # previous location
+    p = data.ix[0, cluster_col]
+    n_trip = 0
+
+    for i in range(1, len(data)):
+
+        # current location
+        c = data.ix[i, cluster_col]
+        if p == c:
+            continue
+        else:
+            n_trip += 1
+            p = c
+
+    return n_trip

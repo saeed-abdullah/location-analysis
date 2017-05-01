@@ -80,3 +80,33 @@ def gyrationradius(data,
         temp_sum += d ** 2
 
     return math.sqrt(temp_sum / len(loc_data))
+
+
+def test_num_trips():
+    df = pd.DataFrame(columns=['cluster'])
+    n = lf.num_trips(df)
+    assert np.isnan(n)
+
+    df = pd.DataFrame([[1],
+                       [1],
+                       [1]],
+                      columns=['cluster'])
+    n = lf.num_trips(df)
+    assert n == 0
+
+    df = pd.DataFrame([[1],
+                       [np.nan],
+                       [2]],
+                      columns=['cluster'])
+    n = lf.num_trips(df)
+    assert n == 1
+
+    df = pd.DataFrame([[1],
+                       [1],
+                       [np.nan],
+                       [2],
+                       [1],
+                       [np.nan]],
+                      columns=['cluster'])
+    n = lf.num_trips(df)
+    assert n == 2
