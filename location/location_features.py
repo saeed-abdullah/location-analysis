@@ -82,53 +82,116 @@ def gyrationradius(data,
     return math.sqrt(temp_sum / len(loc_data))
 
 
-def test_num_trips():
-    df = pd.DataFrame(columns=['cluster'])
-    n = lf.num_trips(df)
-    assert np.isnan(n)
+def num_trips(data,
+              cluster_col='cluster'):
+    """
+    Compute the number of trips from one
+    location to another.
 
-    df = pd.DataFrame([[1],
-                       [1],
-                       [1]],
-                      columns=['cluster'])
-    n = lf.num_trips(df)
-    assert n == 0
+    Parameters:
+    -----------
+    data: DataFrame
+        location data.
 
-    df = pd.DataFrame([[1],
-                       [np.nan],
-                       [2]],
-                      columns=['cluster'])
-    n = lf.num_trips(df)
-    assert n == 1
+    cluster_col: str
+        Location cluster column.
+        Default value is 'cluster'.
 
-    df = pd.DataFrame([[1],
-                       [1],
-                       [np.nan],
-                       [2],
-                       [1],
-                       [np.nan]],
-                      columns=['cluster'])
-    n = lf.num_trips(df)
-    assert n == 2
+    Returns:
+    --------
+    n_trip: int
+        Number of trips.
+    """
+    data = data.loc[~pd.isnull(data[cluster_col])]
+
+    if len(data) == 0:
+        return np.nan
+
+    data = data.reset_index()
+
+    # previous location
+    p = data.ix[0, cluster_col]
+    n_trip = 0
+
+    for i in range(1, len(data)):
+
+        # current location
+        c = data.ix[i, cluster_col]
+        if p == c:
+            continue
+        else:
+            n_trip += 1
+            p = c
+
+    return n_trip
 
 
-def test_max_dist():
-    data = pd.DataFrame(columns=['latitude', 'longitude', 'cluster'])
-    d = lf.max_dist(data)
-    assert np.isnan(d)
+def max_dist(data,
+             cluster_col='cluster',
+             lat_col='latitude',
+             lon_col='longitude',
+             cluster_mapping=None):
+    """
+    Compute the maximum distance between two locations.
 
-    data = pd.DataFrame([[12.3, -45.6, 1],
-                         [12.3, -45.6, 1]],
-                        columns=['latitude', 'longitude', 'cluster'])
-    d = lf.max_dist(data)
-    assert d == pytest.approx(0, 0.000001)
+    Parameters:
+    -----------
+    data: DataFrame
+        Location data.
 
-    data = pd.DataFrame([[12.3, -45.6, 1],
-                         [43.8, 72.9, 2],
-                         [32.5, 12.9, 3]],
-                        columns=['latitude', 'longitude', 'cluster'])
-    d = lf.max_dist(data)
-    assert d == pytest.approx(11233331.835309023, 0.00001)
+    cluster_col: str
+        Location cluster id column.
+
+    lat_col, lon_col: str
+        Latidue and longitude of the cluster
+        locations.
+
+    cluster_mapping: dict
+        A dictionary storing the coordinates
+        of location cluster locations.
+        {location_cluster: coordinates}
+
+    Returns:
+    --------
+    max_dist: float
+        Maximum distance between two locations in meters.
+    """
+    data = data.loc[~pd.isnull(data[cluster_col])]
+
+    if len(data) == 0:
+        return np.nan
+
+    locations = np.unique(data[cluster_col])
+    if len(locations) == 1:
+        return 0
+
+    locations_coord = []
+    # calculate coordinates
+    if cluster_mapping is None:
+
+        # compute the coordinates of each
+        # of the location clusters
+        for l in locations:
+            df = data.loc[data[cluster_col] == l]
+            coord = motif.get_geo_center(df=df,
+                                         lat_c=lat_col,
+                                         lon_c=lon_col)
+            coord = (coord['latitude'], coord['longitude'])
+            locations_coord.append(coord)
+    else:
+        # use the coordinates provided by the mapping
+        for l in locations:
+            locations_coord.append(cluster_mapping[l])
+
+    # find maximum distance
+    max_dist = 0
+    for i in range(len(locations) - 1):
+        for j in range(i + 1, len(locations)):
+            d = vincenty(locations_coord[i], locations_coord[j]).m
+            if d > max_dist:
+                max_dist = d
+
+    return max_dist
 
 
 def num_clusters(data, cluster_col='cluster'):
