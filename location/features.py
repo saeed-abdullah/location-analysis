@@ -126,13 +126,14 @@ def num_trips(data,
     return n_trip
 
 
-def max_dist(data,
-             cluster_c='cluster',
-             lat_c='latitude',
-             lon_c='longitude',
-             cluster_mapping=None):
+def max_dist_between_clusters(data,
+                              cluster_c='cluster',
+                              lat_c='latitude',
+                              lon_c='longitude',
+                              cluster_mapping=None):
     """
-    Compute the maximum distance between two locations.
+    Compute the maximum distance between two
+    location clusters.
 
     Parameters:
     -----------
