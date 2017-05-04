@@ -11,6 +11,7 @@ import math
 from collections import Counter
 import pytz
 import datetime
+import geohash
 
 
 def gyration_radius(data,
@@ -710,3 +711,22 @@ def total_dist(data,
 
     td = sum(dispmnt)
     return td
+
+
+def convert_geohash_to_gps(geohash_str):
+    """
+    Convert geohash value to gps value.
+
+    Parameters:
+    -----------
+    geohash_str: str
+        Geohash string.
+
+    Returns:
+    --------
+    gps: tuple of floats
+        GPS values.
+        (latitude, longitude)
+    """
+    lat, lon = geohash.decode(geohash_str)
+    return lat, lon

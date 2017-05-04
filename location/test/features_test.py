@@ -12,6 +12,7 @@ import pytest
 import location.features as lf
 from geopy.distance import vincenty
 import math
+import geohash
 
 
 def test_gyration_radius():
@@ -452,3 +453,11 @@ def test_total_dist():
                       columns=['cluster'])
     td = lf.total_dist(df, cluster_mapping=cluster_map)
     assert td == pytest.approx(16520745.44722021, 0.00001)
+
+
+def test_convert_geohash_to_gps():
+    x = geohash.encode(30, 100)
+    lat, lon = lf.convert_geohash_to_gps(x)
+    lat_e, lon_e = geohash.decode(x)
+    assert lat == pytest.approx(lat_e, 0.00001)
+    assert lon == pytest.approx(lon_e, 0.00001)
