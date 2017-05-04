@@ -9,7 +9,7 @@ import geohash
 import numpy as np
 import pandas as pd
 import pytest
-import location.location_features as lf
+import location.features as lf
 from geopy.distance import vincenty
 import math
 
