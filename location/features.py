@@ -445,6 +445,13 @@ def entropy(data,
     Entropy is computed as the cumulative products
     of proportion and the log of the proportion of
     time spent at each location.
+
+    Normalized entropy is also calculated as a
+    variant of the entropy fieature scaled to be in
+    the range [0, 1].
+
+    This value calcuated by dividing the original
+    entropy by the number of different locations.
     【Palmius et al, 2016]
 
     Parameters:
@@ -463,88 +470,50 @@ def entropy(data,
 
     Returns:
     --------
-    ent: float
-        Entropy.
-        Return numpy.nan if entropy can
-        not be calculated.
+    tuple of (ent, nent)
+        A tuple contains entropy and normalized entropy.
     """
+    # compute entropy
     if len(data) == 0:
-        return np.nan
-
-    if time_c == 'index':
-        time_col = data.index
+        ent = np.nan
     else:
-        time_col = data[time_c]
+        if time_c == 'index':
+            time_col = data.index
+        else:
+            time_col = data[time_c]
 
-    total_time = (max(time_col) - min(time_col)).seconds
+        total_time = (max(time_col) - min(time_col)).seconds
 
-    # compute waitting time is not provided
-    if wait_time_v is None:
-        wt, cwt = wait_time(data, cluster_c, time_c)
-    else:
-        wt, cwt = wait_time_v
+        # compute waitting time is not provided
+        if wait_time_v is None:
+            wt, cwt = wait_time(data, cluster_c, time_c)
+        else:
+            wt, cwt = wait_time_v
 
-    if len(wt) == 0:
-        return np.nan
+        if len(wt) == 0:
+            ent = np.nan
+        else:
+            ent = 0
+            for k in cwt:
+                p = cwt[k] / total_time
+                ent -= p * math.log(p)
 
-    # compute entroy
-    tmp = 0
-    for k in cwt:
-        p = cwt[k] / total_time
-        tmp += p * math.log(p)
-    ent = -tmp
-
-    return ent
-
-
-def norm_entropy(data,
-                 cluster_c='cluster',
-                 time_c='index',
-                 ent=None):
-    """
-    Calculate normalized entropy, a variant of
-    the entropy fieature scaled to be in the
-    range [0, 1].
-    This value calcuated by dividing the original
-    entropy by the number of different locations.
-    【Palmius et al, 2016]
-
-    Parameters:
-    -----------
-    data: dataframe
-        Location data.
-
-    cluster_c: str
-        Location cluster column name.
-
-    time_c: str
-        Timestamp column name.
-
-    ent: float
-        Original entropy.
-
-    Returns:
-    --------
-    nent: float
-        Entropy.
-        Return numpy.nan if entropy can
-        not be calculated.
-    """
-    # compute original entropy if not provided
-    if ent is None:
-        ent = entropy(data, cluster_c, time_c)
-
+    # compute normalized entropy
     if np.isnan(ent):
         nent = np.nan
     else:
         unique_loc = np.unique(data[cluster_c].dropna())
-        dn = math.log(len(unique_loc))
-        if abs(dn - 0) < 0.000001:
-            return np.nan
-        else:
-            nent = ent / math.log(len(unique_loc))
+        n = len(unique_loc)
 
-    return nent
+        # if the number of clusters is one,
+        # the log value would be 0 and thus
+        # can't be used as the denominator
+        if n == 1:
+            nent = np.nan
+        else:
+            nent = ent / math.log(n)
+
+    return ent, nent
 
 
 def loc_var(data,

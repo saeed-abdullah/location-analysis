@@ -315,12 +315,16 @@ def test_wait_time():
 
 def test_entropy():
     df = pd.DataFrame(columns=['cluster', 'time'])
-    assert np.isnan(lf.entropy(df, time_c='time'))
+    ent, nent = lf.entropy(df, time_c='time')
+    assert np.isnan(ent)
+    assert np.isnan(nent)
 
     df = pd.DataFrame(columns=['cluster', 'time'])
     df['cluster'] = ['dr5xejs']
     df['time'] = [pd.to_datetime('2015-04-14 07:46:43')]
-    assert np.isnan(lf.entropy(df, time_c='time'))
+    ent, nent = lf.entropy(df, time_c='time')
+    assert np.isnan(ent)
+    assert np.isnan(nent)
 
     df = pd.DataFrame(columns=['cluster', 'time'])
     df['cluster'] = ['dr5xejs']
@@ -330,8 +334,9 @@ def test_entropy():
     df['time'] = [pd.to_datetime('2015-04-14 07:00:00'),
                   pd.to_datetime('2015-04-14 07:20:00'),
                   pd.to_datetime('2015-04-14 07:40:00')]
-    ent = lf.entropy(df, time_c='time')
+    ent, nent = lf.entropy(df, time_c='time')
     assert ent == pytest.approx(0.5623351446188083, 0.00001)
+    assert nent == pytest.approx(0.56233514 / math.log(2), 0.00001)
 
     df = pd.DataFrame(columns=['cluster', 'time'])
     df['cluster'] = ['dr5xejs']
@@ -342,41 +347,9 @@ def test_entropy():
                   pd.to_datetime('2015-04-14 07:20:00'),
                   pd.to_datetime('2015-04-14 07:40:00'),
                   pd.to_datetime('2015-04-14 08:00:00')]
-    ent = lf.entropy(df, time_c='time')
+    ent, nent = lf.entropy(df, time_c='time')
     assert ent == pytest.approx(1.0114042647073516, 0.00001)
-
-
-def test_norm_entropy():
-    df = pd.DataFrame(columns=['cluster', 'time'])
-    assert np.isnan(lf.norm_entropy(df, time_c='time'))
-
-    df = pd.DataFrame(columns=['cluster', 'time'])
-    df['cluster'] = ['dr5xejs']
-    df['time'] = [pd.to_datetime('2015-04-14 07:46:43')]
-    assert np.isnan(lf.norm_entropy(df, time_c='time'))
-
-    df = pd.DataFrame(columns=['cluster', 'time'])
-    df['cluster'] = ['dr5xejs']
-    df['time'] = [pd.to_datetime('2015-04-14 07:46:43')]
-    df = pd.DataFrame(columns=['cluster', 'time'])
-    df['cluster'] = ['dr5xejs', 'dr5xejs', 'dr5xef2']
-    df['time'] = [pd.to_datetime('2015-04-14 07:00:00'),
-                  pd.to_datetime('2015-04-14 07:20:00'),
-                  pd.to_datetime('2015-04-14 07:40:00')]
-    ent = lf.norm_entropy(df, time_c='time')
-    assert ent == pytest.approx(0.56233514 / math.log(2), 0.00001)
-
-    df = pd.DataFrame(columns=['cluster', 'time'])
-    df['cluster'] = ['dr5xejs']
-    df['time'] = [pd.to_datetime('2015-04-14 07:46:43')]
-    df = pd.DataFrame(columns=['cluster', 'time'])
-    df['cluster'] = ['dr5xejs', 'dr5xejs', 'dr5xef2', 'dr5xefq']
-    df['time'] = [pd.to_datetime('2015-04-14 07:00:00'),
-                  pd.to_datetime('2015-04-14 07:20:00'),
-                  pd.to_datetime('2015-04-14 07:40:00'),
-                  pd.to_datetime('2015-04-14 08:00:00')]
-    ent = lf.norm_entropy(df, time_c='time')
-    assert ent == pytest.approx(1.0114042 / math.log(3), 0.00001)
+    assert nent == pytest.approx(1.0114042 / math.log(3), 0.00001)
 
 
 def test_loc_var():
