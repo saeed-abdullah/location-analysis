@@ -14,7 +14,7 @@ from geopy.distance import vincenty
 import math
 
 
-def test_gyrationradius():
+def test_gyration_radius():
     # test data
     data_stay_region = ['dr5xfdt',
                         'dr5xfdt',
@@ -38,11 +38,11 @@ def test_gyrationradius():
     expected = 7935.926632803189
 
     # tolerance = 0.01 meter
-    actual_value = lf.gyrationradius(df)
+    actual_value = lf.gyration_radius(df)
     assert actual_value == pytest.approx(expected, 0.01)
 
     # check when k is larger the number of different visited locations
-    assert np.isnan(lf.gyrationradius(df, k=5))
+    assert np.isnan(lf.gyration_radius(df, k=5))
 
     # add the last gps point for five more times
     add_df = pd.DataFrame()
@@ -52,7 +52,7 @@ def test_gyrationradius():
     df = pd.concat([df, add_df])
 
     expected = 6927.0444113855365
-    assert lf.gyrationradius(df) == pytest.approx(expected, 0.01)
+    assert lf.gyration_radius(df) == pytest.approx(expected, 0.01)
 
     # test the k-th radius of gyration
     add_df = pd.DataFrame()
@@ -61,7 +61,7 @@ def test_gyrationradius():
     add_df['latitude'] = coordinate[0]
     add_df['longitude'] = coordinate[1]
     df = pd.concat([df, add_df])
-    assert lf.gyrationradius(df, k=2) == pytest.approx(expected, 0.01)
+    assert lf.gyration_radius(df, k=2) == pytest.approx(expected, 0.01)
 
 
 def test_num_trips():

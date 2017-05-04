@@ -13,11 +13,11 @@ import pytz
 import datetime
 
 
-def gyrationradius(data,
-                   k=None,
-                   lat='latitude',
-                   lon='longitude',
-                   cluster='cluster'):
+def gyration_radius(data,
+                    k=None,
+                    lat='latitude',
+                    lon='longitude',
+                    cluster='cluster'):
     """
     Compute the total or k-th radius of gyration.
     The radius of gyration is used to characterize the typical
