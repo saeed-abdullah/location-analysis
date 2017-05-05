@@ -437,14 +437,6 @@ def test_total_dist():
                       columns=['latitude', 'longitude', 'cluster'])
     assert lf.total_dist(df) == pytest.approx(16520745.44722021, 0.00001)
 
-    cluster_map = {1: (12.3, -45.6),
-                   2: (43.8, 72.9),
-                   3: (32.5, 12.9)}
-    df = pd.DataFrame([1, 2, 3],
-                      columns=['cluster'])
-    td = lf.total_dist(df, cluster_mapping=cluster_map)
-    assert td == pytest.approx(16520745.44722021, 0.00001)
-
 
 def test_convert_geohash_to_gps():
     x = geohash.encode(30, 100)
