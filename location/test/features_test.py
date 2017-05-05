@@ -466,3 +466,18 @@ def test_convert_geohash_to_gps():
     lat_e, lon_e = geohash.decode(x)
     assert lat == pytest.approx(lat_e, 0.00001)
     assert lon == pytest.approx(lon_e, 0.00001)
+
+
+def test_convert_and_append_geohash():
+    df = pd.DataFrame()
+    df['cluster'] = ['dr5rw5u', 'dr5rw5u', np.nan, 'dr5rw52']
+    lat1, lon1 = geohash.decode('dr5rw5u')
+    lat2, lon2 = geohash.decode('dr5rw52')
+    d = [['dr5rw5u', lat1, lon1],
+         ['dr5rw5u', lat1, lon1],
+         [np.nan, np.nan, np.nan],
+         ['dr5rw52', lat2, lon2]]
+    df2 = pd.DataFrame(d, columns=['cluster',
+                                   'latitude',
+                                   'longitude'])
+    assert df2.equals(lf.convert_and_append_geohash(df))

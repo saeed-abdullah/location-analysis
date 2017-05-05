@@ -731,3 +731,33 @@ def convert_geohash_to_gps(geohash_str):
     """
     lat, lon = geohash.decode(geohash_str)
     return lat, lon
+
+
+def convert_and_append_geohash(data,
+                               cluster_c='cluster',
+                               lat_c='latitude',
+                               lon_c='longitude'):
+    """
+    Convert geohash to gps and append
+    to the dataframe as new columns.
+
+    Parameters:
+    -----------
+    data: DataFrame
+        Location data
+
+    cluster_c: str
+        Location cluster column.
+
+    Returns:
+    --------
+    data: DataFrame
+        Location data with converted geohash value.
+    """
+    for idx, row in data.iterrows():
+        if pd.isnull(row[cluster_c]):
+            continue
+        lat, lon = convert_geohash_to_gps(row[cluster_c])
+        data.loc[idx, lat_c] = lat
+        data.loc[idx, lon_c] = lon
+    return data
