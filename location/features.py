@@ -131,8 +131,7 @@ def num_trips(data,
 def max_dist_between_clusters(data,
                               cluster_c='cluster',
                               lat_c='latitude',
-                              lon_c='longitude',
-                              cluster_mapping=None):
+                              lon_c='longitude'):
     """
     Compute the maximum distance between two
     location clusters.
@@ -149,11 +148,6 @@ def max_dist_between_clusters(data,
         Latidue and longitude of the cluster
         locations.
 
-    cluster_mapping: dict
-        A dictionary storing the coordinates
-        of location cluster locations.
-        {location_cluster: coordinates}
-
     Returns:
     --------
     max_dist: float
@@ -168,23 +162,12 @@ def max_dist_between_clusters(data,
     if len(locations) == 1:
         return 0
 
+    # get list of different gps coordinates
     locations_coord = []
-    # calculate coordinates
-    if cluster_mapping is None:
-
-        # compute the coordinates of each
-        # of the location clusters
-        for l in locations:
-            df = data.loc[data[cluster_c] == l]
-            coord = motif.get_geo_center(df=df,
-                                         lat_c=lat_c,
-                                         lon_c=lon_c)
-            coord = (coord['latitude'], coord['longitude'])
-            locations_coord.append(coord)
-    else:
-        # use the coordinates provided by the mapping
-        for l in locations:
-            locations_coord.append(cluster_mapping[l])
+    for l in locations:
+        df = data.loc[data[cluster_c] == l].reset_index()
+        gps = (df.ix[0, lat_c], df.ix[0, lon_c])
+        locations_coord.append(gps)
 
     # find maximum distance
     max_dist = 0
