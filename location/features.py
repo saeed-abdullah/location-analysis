@@ -52,7 +52,7 @@ def gyration_radius(data,
         visited locations.
     """
     loc_data = data[[lat_c, lon_c, cluster_c]].dropna()
-    if len(loc_data) <= 0:
+    if len(loc_data) == 0:
         return np.nan
 
     # get location data for corresponding k
@@ -74,13 +74,14 @@ def gyration_radius(data,
     r_cm = (r_cm['latitude'], r_cm['longitude'])
 
     # compute gyration of radius
-    temp_sum = 0
-    for _, r in loc_data.iterrows():
-        p = (r[lat_c], r[lon_c])
-        d = vincenty(p, r_cm).m
-        temp_sum += d ** 2
+    cluster_cnt = Counter(loc_data[cluster_c])
+    tmp = 0
+    for c in cluster_cnt:
+        cluster_gps = convert_geohash_to_gps(c)
+        d = vincenty(r_cm, cluster_gps).m
+        tmp += cluster_cnt[c] * (d ** 2)
 
-    return math.sqrt(temp_sum / len(loc_data))
+    return math.sqrt(tmp / len(loc_data))
 
 
 def num_trips(data,

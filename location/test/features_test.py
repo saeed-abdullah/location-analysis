@@ -17,23 +17,25 @@ import geohash
 
 def test_gyration_radius():
     # test data
-    data_stay_region = ['dr5xfdt',
-                        'dr5xfdt',
-                        'dr5xfdt',
-                        'dr5rw5u',
-                        'dr5rw5u',
-                        'dr5rw5u',
-                        'dr5rw5u',
-                        'dr5rw5u',
-                        'dr5rw5u',
-                        'dr5rw5u']
-    coordinates = [geohash.decode(x) for x in data_stay_region]
-    lat = [c[0] for c in coordinates]
-    lon = [c[1] for c in coordinates]
+    cluster_col = ['dr5xfdt',
+                   'dr5xfdt',
+                   'dr5xfdt',
+                   'dr5rw5u',
+                   'dr5rw5u',
+                   'dr5rw5u',
+                   'dr5rw5u',
+                   'dr5rw5u',
+                   'dr5rw5u',
+                   'dr5rw5u']
     df = pd.DataFrame()
-    df['cluster'] = data_stay_region
-    df['latitude'] = lat
-    df['longitude'] = lon
+    df['cluster'] = cluster_col
+    t = pd.to_datetime('2015-04-14 06:52:00')
+    df['time'] = pd.date_range(start=t, periods=10, freq='1d')
+    df = df.set_index('time')
+    for idx, row in df.iterrows():
+        lat, lon = geohash.decode(row['cluster'])
+        df.loc[idx, 'latitude'] = lat
+        df.loc[idx, 'longitude'] = lon
 
     # expected result
     expected = 7935.926632803189
@@ -46,22 +48,25 @@ def test_gyration_radius():
     assert np.isnan(lf.gyration_radius(df, k=5))
 
     # add the last gps point for five more times
-    add_df = pd.DataFrame()
-    add_df['cluster'] = ['dr5rw5u'] * 5
-    add_df['latitude'] = [lat[-1]] * 5
-    add_df['longitude'] = [lon[-1]] * 5
-    df = pd.concat([df, add_df])
+    p = df.index[-1]
+    for i in range(5):
+        p += pd.to_timedelta('1d')
+        lat, lon = geohash.decode('dr5rw5u')
+        df.loc[p, 'cluster'] = 'dr5rw5u'
+        df.loc[p, 'latitude'] = lat
+        df.loc[p, 'longitude'] = lon
 
     expected = 6927.0444113855365
     assert lf.gyration_radius(df) == pytest.approx(expected, 0.01)
 
     # test the k-th radius of gyration
-    add_df = pd.DataFrame()
-    add_df['cluster'] = ['dr5xg5g'] * 2
-    coordinate = geohash.decode('dr5xg5g')
-    add_df['latitude'] = coordinate[0]
-    add_df['longitude'] = coordinate[1]
-    df = pd.concat([df, add_df])
+    p = df.index[-1]
+    for i in range(2):
+        p += pd.to_timedelta('1d')
+        df.loc[p, 'cluster'] = 'dr5xg5g'
+        lat, lon = geohash.decode('dr5xg5g')
+        df.loc[p, 'latitude'] = lat
+        df.loc[p, 'longitude'] = lon
     assert lf.gyration_radius(df, k=2) == pytest.approx(expected, 0.01)
 
 
