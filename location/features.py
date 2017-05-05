@@ -209,8 +209,7 @@ def num_clusters(data, cluster_c='cluster'):
 def displacement(data,
                  lat_c='latitude',
                  lon_c='longitude',
-                 cluster_c='cluster',
-                 cluster_mapping=None):
+                 cluster_c='cluster'):
     """
     Calculate the displacement of the location data,
     which is list of distances traveled from one location
@@ -230,13 +229,6 @@ def displacement(data,
         Default values are 'latitude', and
         'longitude' respectively.
 
-    cluster_mapping: dict
-        A mapping from cluster id to
-        gps coordinates.
-        Defaults to None, in which case
-        use latitude and longitude given
-        in location data.
-
     Returns:
     --------
     displace: list
@@ -245,75 +237,22 @@ def displacement(data,
     data = data.loc[~pd.isnull(data[cluster_c])]
     displace = []
 
-    if len(data) <= 1:
+    if len(data) == 1:
         return displace
 
-    data = data.reset_index()
+    # location history
+    data = data.loc[data[cluster_c] != data[cluster_c].shift()]
 
-    if cluster_mapping is None:
-        prev_idx = 0
-        prev_cluster = data.ix[0, cluster_c]
-        loc_list = []
-
-        # get location history
-        for i in range(1, len(data)):
-            curr_cluster = data.ix[i, cluster_c]
-
-            # compute the coordinates of the center
-            # of current location cluster
-            if curr_cluster != prev_cluster:
-                tmp_df = data.loc[(data.index >= prev_idx) &
-                                  (data.index <= i - 1)]
-                coord = motif.get_geo_center(df=tmp_df,
-                                             lat_c=lat_c,
-                                             lon_c=lon_c)
-                loc_list.append((coord['latitude'],
-                                 coord['longitude']))
-                prev_idx = i
-                prev_cluster = curr_cluster
-
-        # handle last location
-        tmp_df = data.ix[(data.index >= prev_idx) &
-                         (data.index <= len(data) - 1)]
-        coord = motif.get_geo_center(df=tmp_df,
-                                     lat_c=lat_c,
-                                     lon_c=lon_c)
-        loc_list.append((coord['latitude'],
-                         coord['longitude']))
-
-        # compute displacements
-        if len(loc_list) <= 1:
-            return displace
-
-        # compute the distance between different
-        # consecutive locations
-        for i in range(1, len(loc_list)):
-            displace.append(vincenty(loc_list[i-1],
-                                     loc_list[i]).m)
-
-    # use cluster mapping instead of computing
-    # the coordinates of cluster center
-    else:
-        prev_cluster = data.ix[0, cluster_c]
-        loc_list = []
-
-        # get location history
-        for i in range(1, len(data)):
-            curr_cluster = data.ix[i, cluster_c]
-            if curr_cluster != prev_cluster:
-                loc_list.append(cluster_mapping[prev_cluster])
-                prev_cluster = curr_cluster
-
-        # handle last location
-        loc_list.append((cluster_mapping[prev_cluster]))
-
-        # compute displacements
-        if len(loc_list) <= 1:
-            return displace
-
-        for i in range(1, len(loc_list)):
-            displace.append(vincenty(loc_list[i-1],
-                                     loc_list[i]).m)
+    # compute displacements
+    prev = None
+    for _, row in data.iterrows():
+        if prev is None:
+            prev = (row[lat_c], row[lon_c])
+            continue
+        curr = (row[lat_c], row[lon_c])
+        d = vincenty(prev, curr).m
+        displace.append(d)
+        prev = curr
 
     return displace
 

@@ -175,20 +175,6 @@ def test_displacement():
     assert displace[0] == pytest.approx(3118.1779973248804, 0.0001)
     assert displace[1] == pytest.approx(3103.7813441942367, 0.0001)
 
-    df = pd.DataFrame(columns=['cluster'])
-    df['cluster'] = [np.nan, np.nan,
-                     'dr5xejs', 'dr5xejs',
-                     np.nan, 'dr5xef2',
-                     'dr5xef2', 'dr5xejs']
-    cluster_mapping = {'dr5xejs': geohash.decode('dr5xejs'),
-                       'dr5xef2': geohash.decode('dr5xef2')}
-    displace = lf.displacement(df, cluster_mapping=cluster_mapping)
-    assert len(displace) == 2
-    expected = vincenty(cluster_mapping['dr5xejs'],
-                        cluster_mapping['dr5xef2']).m
-    assert displace[0] == pytest.approx(expected, 0.0001)
-    assert displace[1] == pytest.approx(expected, 0.0001)
-
 
 def test_wait_time():
     df = pd.DataFrame(columns=['cluster', 'time'])
