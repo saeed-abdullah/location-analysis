@@ -459,3 +459,64 @@ def test_convert_and_append_geohash():
                                    'latitude',
                                    'longitude'])
     assert df2.equals(lf.convert_and_append_geohash(df))
+
+
+def test_to_daily():
+    data = pd.DataFrame()
+    df = lf.to_daily(data)
+    assert len(df) == 0
+
+    t = '2015-10-01 00:00:00-04:00'
+    t = pd.to_datetime(t).tz_localize('UTC').tz_convert('America/New_York')
+    t2 = '2015-10-02 00:00:00-04:00'
+    t2 = pd.to_datetime(t2).tz_localize('UTC').tz_convert('America/New_York')
+    d = [['2015-10-01 05:39:46-04:00', 'dr5xfdt'],
+         ['2015-10-01 17:56:13-04:00', 'dr78psd'],
+         ['2015-10-02 02:27:54-04:00', 'dr78psd']]
+    data = pd.DataFrame(d, columns=['time', 'stay_region'])
+    data['time'] = pd.to_datetime(data['time'])
+    data = data.set_index('time')
+    data = data.tz_localize('UTC')
+    data = data.tz_convert('America/New_York')
+    df = lf.to_daily(data)
+    assert len(df) == 2
+    assert t == df[0][0]
+    assert t2 == df[1][0]
+    assert len(df[0][1]) == 2
+    assert len(df[1][1]) == 1
+
+    t = '2015-10-01 03:00:00-04:00'
+    t = pd.to_datetime(t).tz_localize('UTC').tz_convert('America/New_York')
+    df = lf.to_daily(data, start_hour=3)
+    assert len(df) == 1
+    assert t == df[0][0]
+    assert len(df[0][1]) == 3
+
+    d = [['2015-10-01 05:39:46-04:00', 'dr5xfdt'],
+         ['2015-10-01 17:56:13-04:00', 'dr78psd'],
+         ['2015-10-02 02:27:54-04:00', 'dr78psd'],
+         ['2015-10-05 02:27:54-04:00', 'dr78psd']]
+    data = pd.DataFrame(d, columns=['time', 'stay_region'])
+    data['time'] = pd.to_datetime(data['time'])
+    data = data.set_index('time')
+    data = data.tz_localize('UTC')
+    data = data.tz_convert('America/New_York')
+    t = ['2015-10-01 00:00:00-04:00',
+         '2015-10-02 00:00:00-04:00',
+         '2015-10-03 00:00:00-04:00',
+         '2015-10-04 00:00:00-04:00',
+         '2015-10-05 00:00:00-04:00']
+    t = [pd.to_datetime(x).tz_localize('UTC').tz_convert('America/New_York')
+         for x in t]
+    df = lf.to_daily(data)
+    assert len(df) == 5
+    assert df[0][0] == t[0]
+    assert df[1][0] == t[1]
+    assert df[2][0] == t[2]
+    assert df[3][0] == t[3]
+    assert df[4][0] == t[4]
+    assert len(df[0][1]) == 2
+    assert len(df[1][1]) == 1
+    assert len(df[2][1]) == 0
+    assert len(df[3][1]) == 0
+    assert len(df[4][1]) == 1

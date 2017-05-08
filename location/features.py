@@ -677,3 +677,63 @@ def convert_and_append_geohash(data,
         data.loc[idx, lat_c] = lat
         data.loc[idx, lon_c] = lon
     return data
+
+
+def to_daily(data, start_hour=0):
+    """
+    Generate daily data.
+    Data are generated between the earliest
+    and latest dates. If there is no data
+    in a specific day, the data for that day
+    is an empty DataFrame.
+
+    Parameters:
+    -----------
+    data: DataFrame
+        Hourly data.
+
+    start_hour: int
+        Start of the day.
+        Default is 0.
+
+    Retuens:
+    --------
+    daily_data: list of DataFrame
+        Daily data. [(datetime, dataframe), ...]
+    """
+    if len(data) == 0:
+        return []
+
+    one_day = pd.to_timedelta('1d')
+
+    # start time
+    start_time = data.index[0].replace(microsecond=0,
+                                       second=0,
+                                       minute=0,
+                                       hour=start_hour)
+    if data.index[0] < start_time:
+        start_time -= one_day
+
+    # end time
+    end_time = data.index[-1].replace(microsecond=0,
+                                      second=0,
+                                      minute=0,
+                                      hour=start_hour)
+    if data.index[-1] < end_time:
+        end_time -= one_day
+
+    # generate daily data
+    t = start_time
+    daily_data = []
+
+    while t <= end_time:
+
+        # extract data within current day
+        next_t = t + one_day
+        df = data.loc[(data.index >= t) & (data.index < next_t)]
+        daily_data.append((t, df))
+
+        # update pointer
+        t = next_t
+
+    return daily_data
