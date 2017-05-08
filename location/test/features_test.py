@@ -520,3 +520,53 @@ def test_to_daily():
     assert len(df[2][1]) == 0
     assert len(df[3][1]) == 0
     assert len(df[4][1]) == 1
+
+
+def test_to_weekly():
+    data = pd.DataFrame()
+    df = lf.to_weekly(data)
+    assert len(df) == 0
+
+    t = '2017-04-24 00:00:00-04:00'
+    t = pd.to_datetime(t).tz_localize('UTC').tz_convert('America/New_York')
+    d = [['2017-04-24 05:39:46-04:00', 'dr5xfdt'],
+         ['2017-04-25 17:56:13-04:00', 'dr78psd'],
+         ['2017-04-25 02:27:54-04:00', 'dr78psd']]
+    data = pd.DataFrame(d, columns=['time', 'stay_region'])
+    data['time'] = pd.to_datetime(data['time'])
+    data = data.set_index('time')
+    data = data.tz_localize('UTC')
+    data = data.tz_convert('America/New_York')
+    data = data.sort_index()
+    weekly = lf.to_weekly(data)
+    assert len(weekly) == 1
+    assert weekly[0][0] == t
+    assert len(weekly[0][1]) == 3
+
+    t = ['2017-04-24 00:00:00-04:00',
+         '2017-05-01 00:00:00-04:00',
+         '2017-05-08 00:00:00-04:00',
+         '2017-05-15 00:00:00-04:00']
+    t = [pd.to_datetime(x).tz_localize('UTC').tz_convert('America/New_York')
+         for x in t]
+    d = [['2017-04-24 05:39:46-04:00', 'dr5xfdt'],
+         ['2017-04-25 17:56:13-04:00', 'dr78psd'],
+         ['2017-04-25 22:27:54-04:00', 'dr78psd'],
+         ['2017-05-03 02:27:54-04:00', 'dr78psd'],
+         ['2017-05-17 02:27:54-04:00', 'dr78psd']]
+    data = pd.DataFrame(d, columns=['time', 'stay_region'])
+    data['time'] = pd.to_datetime(data['time'])
+    data = data.set_index('time')
+    data = data.tz_localize('UTC')
+    data = data.tz_convert('America/New_York')
+    data = data.sort_index()
+    weekly = lf.to_weekly(data)
+    assert len(weekly) == 4
+    assert weekly[0][0] == t[0]
+    assert len(weekly[0][1]) == 3
+    assert weekly[1][0] == t[1]
+    assert len(weekly[1][1]) == 1
+    assert weekly[2][0] == t[2]
+    assert len(weekly[2][1]) == 0
+    assert weekly[3][0] == t[3]
+    assert len(weekly[3][1]) == 1

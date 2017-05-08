@@ -737,3 +737,59 @@ def to_daily(data, start_hour=0):
         t = next_t
 
     return daily_data
+
+
+def to_weekly(data):
+    """
+    Convert data to weekly data.
+    A week starts on Monday with Monday=0, Sunday=6.
+
+    # TO-DO:
+    how to fill up missing data in a week.
+
+    Parameters:
+    -----------
+    data: DataFrame
+        Data to be processed.
+
+    Returns:
+    --------
+    weekly: list
+        A list of weekly data with (datetime.date, dataframe).
+    """
+
+    weekly = []
+
+    if len(data) == 0:
+        return weekly
+
+    # start time
+    start_t = data.index[0]
+    while start_t.weekday() > 0:
+        start_t -= pd.to_timedelta('1d')
+    start_t = start_t.replace(microsecond=0,
+                              second=0,
+                              minute=0,
+                              hour=0)
+
+    # end time
+    end_t = data.index[-1]
+    while end_t.weekday() > 0:
+        end_t -= pd.to_timedelta('1d')
+    end_t = end_t.replace(microsecond=0,
+                          second=0,
+                          minute=0,
+                          hour=0)
+
+    # weekly data
+    p = start_t
+    while p <= end_t:
+
+        next_week = p + pd.to_timedelta('7d')
+        df = data.loc[(data.index >= p) & (data.index < next_week)]
+        weekly.append((p, df))
+
+        # update pointer
+        p = next_week
+
+    return weekly
