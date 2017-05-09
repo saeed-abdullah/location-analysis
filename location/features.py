@@ -155,11 +155,8 @@ def max_dist_between_clusters(data,
         return 0
 
     # get list of different gps coordinates
-    locations_coord = []
-    for l in locations:
-        df = data.loc[data[cluster_c] == l].reset_index()
-        gps = (df.ix[0, lat_c], df.ix[0, lon_c])
-        locations_coord.append(gps)
+    locations_coord = [geohash.decode(x)
+                       for x in locations]
 
     # find maximum distance
     max_dist = 0

@@ -106,18 +106,27 @@ def test_max_dist_between_clusters():
     d = lf.max_dist_between_clusters(data)
     assert np.isnan(d)
 
-    data = pd.DataFrame([[12.3, -45.6, 1],
-                         [12.3, -45.6, 1]],
+    c1 = geohash.encode(latitude=12.3,
+                        longitude=-45.6)
+    c2 = geohash.encode(latitude=43.8,
+                        longitude=72.9)
+    c3 = geohash.encode(latitude=32.5,
+                        longitude=12.9)
+    gps1 = list(geohash.decode(c1))
+    gps2 = list(geohash.decode(c2))
+    gps3 = list(geohash.decode(c3))
+    data = pd.DataFrame([gps1 + [c1],
+                         gps1 + [c1]],
                         columns=['latitude', 'longitude', 'cluster'])
     d = lf.max_dist_between_clusters(data)
     assert d == pytest.approx(0, 0.000001)
 
-    data = pd.DataFrame([[12.3, -45.6, 1],
-                         [43.8, 72.9, 2],
-                         [32.5, 12.9, 3]],
+    data = pd.DataFrame([gps1 + [c1],
+                         gps2 + [c2],
+                         gps3 + [c3]],
                         columns=['latitude', 'longitude', 'cluster'])
     d = lf.max_dist_between_clusters(data)
-    assert d == pytest.approx(11233331.835309023, 0.00001)
+    assert d == pytest.approx(11233331.837474314, 0.00001)
 
 
 def test_num_clusters():
