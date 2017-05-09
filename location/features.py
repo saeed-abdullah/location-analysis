@@ -12,6 +12,8 @@ from collections import Counter
 import pytz
 import datetime
 import geohash
+import argparse
+import json
 
 
 def gyration_radius(data,
@@ -793,3 +795,64 @@ def to_weekly(data):
         p = next_week
 
     return weekly
+
+
+def _load_location_data(path, time_c, lat_c, lon_c, cluster_c):
+    """
+    Load location data, convert time column to DataTime objects
+    and set it as index.
+
+    Parameters:
+    -----------
+    path: str
+        File path.
+
+    time_c, lat_c, lon_c, cluster_c: str
+        Time, latitude, longitidue, cluster columns.
+
+    Returns:
+    --------
+    df: DataFrame
+        Locataion data.
+    """
+    df = pd.read_csv(path, usecols=[time_c, lat_c, lon_c, cluster_c])
+    df[time_c] = pd.to_datetime(df[time_c])
+    df = df.set_index(time_c, drop=False)
+    df = df.sort_index()
+    return df
+
+
+def main():
+    """
+    Handle command line options.
+    """
+    parser = argparse.ArgumentParser()
+
+    # commond
+    parser.add_argument('-c', '--config', required=True,
+                        help='JSON config file path')
+
+    parser.add_argument('-f', '--file', required=True,
+                        help='File path')
+
+    args = parser.parse_args()
+
+    with open(args.config) as f:
+        config = json.load(f)
+
+    loc_config = config['location_data_args']
+    cluster_c = loc_config['cluster_c']
+    lat_c = loc_config['lat_c']
+    lon_c = loc_config['lon_c']
+
+    # read location data
+    df = pd.read_csv(path, usecols=[time_c, lat_c, lon_c, cluster_c])
+    df[time_c] = pd.to_datetime(df[time_c])
+    df = df.set_index(time_c, drop=False)
+    df = df.sort_index()
+
+    print(df)
+
+
+if __name__ == '__main__':
+    main()

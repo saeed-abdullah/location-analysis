@@ -13,6 +13,7 @@ import location.features as lf
 from geopy.distance import vincenty
 import math
 import geohash
+from io import StringIO
 
 
 def test_gyration_radius():
@@ -570,3 +571,22 @@ def test_to_weekly():
     assert len(weekly[2][1]) == 0
     assert weekly[3][0] == t[3]
     assert len(weekly[3][1]) == 1
+
+
+def test_load_locatoin_data():
+    df = pd.DataFrame([['2017-05-17 02:27:54-04:00', 1, 2, 'a'],
+                       ['2017-05-13 02:27:54-04:00', 3, 4, 'b']],
+                      columns=['time', 'lat', 'lon', 'cluster'])
+    f = StringIO()
+    df.to_csv(f)
+    f.seek(0)
+    args = {'time_c': 'time',
+            'lat_c': 'lat',
+            'lon_c': 'lon',
+            'cluster_c': 'cluster'}
+
+    loaded = lf._load_location_data(f, **args)
+    df['time'] = pd.to_datetime(df['time'])
+    df = df.set_index('time', drop=False)
+    df = df.sort_index()
+    assert loaded.equals(df)
