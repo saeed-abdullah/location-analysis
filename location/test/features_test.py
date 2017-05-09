@@ -599,3 +599,49 @@ def test_load_locatoin_data():
     df = df.set_index('time', drop=False)
     df = df.sort_index()
     assert loaded.equals(df)
+
+
+def test_generate_features():
+    args = {}
+    args['location_data_args'] = {'cluster_c': 'cluster',
+                                  'time_c': 'time',
+                                  'lat_c': 'lat',
+                                  'lon_c': 'lon'}
+    daily_features = {'num_clusters': {'cluster_c': 'cluster'},
+                      'num_trips': {'cluster_c': 'cluster'}}
+    args['subset'] = {'daily': {'args': 'null',
+                                'features': daily_features}}
+
+    d = [['2015-10-01 05:39:46-04:00', 'dr5xfdt'] +
+         list(geohash.decode('dr5xfdt')),
+         ['2015-10-01 17:56:13-04:00', 'dr78psd'] +
+         list(geohash.decode('dr78psd')),
+         ['2015-10-02 02:27:54-04:00', 'dr78psd'] +
+         list(geohash.decode('dr78psd')),
+         ['2015-10-05 02:27:54-04:00', 'dr78psd'] +
+         list(geohash.decode('dr78psd'))]
+    data = pd.DataFrame(d, columns=['time', 'cluster', 'lat', 'lon'])
+    data['time'] = [pd.to_datetime(x).
+                    tz_localize('UTC').
+                    tz_convert('America/New_York')
+                    for x in data['time']]
+    data = data.set_index('time', drop=False)
+    data = data.sort_index()
+    daily_data = lf.to_daily(data)
+    df = lf._generate_fetures(daily_data, daily_features)
+    assert len(df) == len(daily_data)
+    assert df.index.tolist() == [x[0] for x in daily_data]
+    assert 'num_clusters' in df.columns
+    assert 'num_trips' in df.columns
+    expected = [2, 1, np.nan, np.nan, 1]
+    for x, y in zip(df['num_clusters'], expected):
+        if np.isnan(x):
+            assert np.isnan(y)
+        else:
+            assert x == pytest.approx(y, 0.00001)
+    expected = [1, 0, np.nan, np.nan, 0]
+    for x, y in zip(df['num_trips'], expected):
+        if np.isnan(x):
+            assert np.isnan(y)
+        else:
+            assert x == pytest.approx(y, 0.00001)

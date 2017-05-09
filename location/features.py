@@ -809,6 +809,56 @@ def _load_location_data(path, time_c, lat_c, lon_c, cluster_c):
     return df
 
 
+def _generate_fetures(data, features):
+    """
+    Generate features.
+
+    Parameters:
+    -----------
+    data: list of DataFrame
+        Daily or weekly location data.
+
+    features: dict
+        Features and their configurations.
+
+    Returns:
+    --------
+    df: DataFrame
+        Daily or weekly features.
+    """
+    feature_func = {'gyration_radius': gyration_radius,
+                    'num_trips': num_trips,
+                    'num_clusters': num_clusters,
+                    'max_dist_between_clusters': max_dist_between_clusters,
+                    'num_clusters': num_clusters,
+                    'displacement': displacement,
+                    'wait_time': wait_time,
+                    'entropy': entropy,
+                    'loc_var': loc_var,
+                    'home_stay': home_stay,
+                    'trans_time': trans_time,
+                    'total_dist': total_dist}
+
+    df_data = {}
+    for date, curr_data in data:
+        row = {}
+        if len(curr_data) == 0:
+            for f in features:
+                row[f] = np.nan
+        else:
+            for f in features:
+                args = features[f]
+                if args is not None:
+                    f_value = feature_func[f](curr_data, **args)
+                else:
+                    f_value = feature_func[f](curr_data)
+                row[f] = f_value
+        df_data[date] = row
+
+    df = pd.DataFrame.from_dict(df_data, orient='index')
+    return df
+
+
 def main():
     """
     Handle command line options.
