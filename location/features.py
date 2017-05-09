@@ -111,21 +111,11 @@ def num_trips(data,
     if len(data) == 0:
         return np.nan
 
-    data = data.reset_index()
+    # location history
+    data = data.loc[data[cluster_c] != data[cluster_c].shift()]
 
-    # previous location
-    p = data.ix[0, cluster_c]
-    n_trip = 0
-
-    for i in range(1, len(data)):
-
-        # current location
-        c = data.ix[i, cluster_c]
-        if p == c:
-            continue
-        else:
-            n_trip += 1
-            p = c
+    # num_trips
+    n_trip = len(data) - 1
 
     return n_trip
 
