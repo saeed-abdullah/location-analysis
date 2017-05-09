@@ -844,14 +844,10 @@ def main():
     cluster_c = loc_config['cluster_c']
     lat_c = loc_config['lat_c']
     lon_c = loc_config['lon_c']
+    time_c = loc_config['time_c']
 
     # read location data
-    df = pd.read_csv(path, usecols=[time_c, lat_c, lon_c, cluster_c])
-    df[time_c] = pd.to_datetime(df[time_c])
-    df = df.set_index(time_c, drop=False)
-    df = df.sort_index()
-
-    print(df)
+    df = _load_location_data(args.file, **loc_config)
 
 
 if __name__ == '__main__':
