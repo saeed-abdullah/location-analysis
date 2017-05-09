@@ -886,6 +886,26 @@ def main():
     # read location data
     df = _load_location_data(args.file, **loc_config)
 
+    # preprocess data
+    df = convert_and_append_geohash(data=df,
+                                    cluster_c=loc_config['cluster_c'],
+                                    lat_c=loc_config['lat_c'],
+                                    lon_c=loc_config['lon_c'])
+
+    # compute features
+    subsets = config['subsets']
+    for k in subsets:
+        if k == 'daily':
+            df = to_daily(df, **subsets[k]['args'])
+            features = subsets[k]['features']
+            ret = _generate_fetures(df, features)
+            ret.to_csv('daily.csv')
+        if k == 'weekly':
+            df = to_weekly(df, **subsets[k]['args'])
+            features = subsets[k]['features']
+            ret = _generate_fetures(df, features)
+            ret.to_csv('weekly.csv')
+
 
 if __name__ == '__main__':
     main()
