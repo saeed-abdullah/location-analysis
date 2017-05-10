@@ -9,7 +9,6 @@
 """
 
 import argparse
-from collections import Counter
 import json
 import math
 
@@ -1039,7 +1038,6 @@ def insert_home_location(data,
     filtered_nodes: tuple
         Filtered nodes.
     """
-    locs = data.copy()
     filtered_nodes = deepcopy(nodes)
 
     # find the home location
@@ -1146,7 +1144,6 @@ def filter_out_travelling_day(data,
     filtered_nodes: tuple
         Filtered nodes.
     """
-    locs = data.copy()
     filtered_nodes = []
 
     # find the home location
