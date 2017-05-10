@@ -880,9 +880,10 @@ def get_home_location(loc_data, sr_col='stay_region'):
         Home location in geohash form.
         None if there is no data from 0:00 to 6:00.
     """
-    night_hours = list(range(6))
+    night_hr = list(range(6))
     loc_data = loc_data.dropna()
-    night_locs = loc_data[loc_data.index.map(lambda z: z.hour in night_hours)]
+    criterion = loc_data.index.map(lambda z: z.hour in night_hr).get_values()
+    night_locs = loc_data[criterion]
 
     # if no home location is detected,
     # do not insert home location.
