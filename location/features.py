@@ -11,13 +11,14 @@ import math
 from collections import Counter
 import pytz
 import datetime
+import geohash
 
 
-def gyrationradius(data,
-                   k=None,
-                   lat='latitude',
-                   lon='longitude',
-                   cluster='cluster'):
+def gyration_radius(data,
+                    k=None,
+                    lat_c='latitude',
+                    lon_c='longitude',
+                    cluster_c='cluster'):
     """
     Compute the total or k-th radius of gyration.
     The radius of gyration is used to characterize the typical
@@ -37,7 +38,7 @@ def gyrationradius(data,
         k-th radius of gyration is the radius gyration compuated up to
         the k-th most frequent visited locations.
 
-    lat, lon, cluster: str
+    lat_c, lon_c, cluster_c: str
         Columns of latitude, longitude, and
         cluster ids. The default valuesa are
         'latitude', 'longitude', and 'cluster'
@@ -50,13 +51,13 @@ def gyrationradius(data,
         Return np.nan is k is greater than the number of different
         visited locations.
     """
-    loc_data = data[[lat, lon, cluster]].dropna()
-    if len(loc_data) <= 0:
+    loc_data = data[[lat_c, lon_c, cluster_c]].dropna()
+    if len(loc_data) == 0:
         return np.nan
 
     # get location data for corresponding k
     if k is not None:
-        cnt_locs = Counter(loc_data[cluster])
+        cnt_locs = Counter(loc_data[cluster_c])
         # number of different visited locations
         num_visited_locations = len(cnt_locs)
         if k > num_visited_locations:
@@ -66,72 +67,120 @@ def gyrationradius(data,
             k_locations = cnt_locs.most_common()[:k]
             k_locations = [x[0] for x in k_locations]
             # compute gyration for the k most frequent locations
-            loc_data = loc_data.loc[loc_data[cluster].isin(k_locations)]
+            loc_data = loc_data.loc[loc_data[cluster_c].isin(k_locations)]
 
     # compute mass of locations
-    r_cm = motif.get_geo_center(loc_data, lat_c=lat, lon_c=lon)
+    r_cm = motif.get_geo_center(loc_data, lat_c=lat_c, lon_c=lon_c)
     r_cm = (r_cm['latitude'], r_cm['longitude'])
 
     # compute gyration of radius
-    temp_sum = 0
-    for _, r in loc_data.iterrows():
-        p = (r[lat], r[lon])
-        d = vincenty(p, r_cm).m
-        temp_sum += d ** 2
+    cluster_cnt = Counter(loc_data[cluster_c])
+    tmp = 0
+    for c in cluster_cnt:
+        cluster_gps = convert_geohash_to_gps(c)
+        d = vincenty(r_cm, cluster_gps).m
+        tmp += cluster_cnt[c] * (d ** 2)
 
-    return math.sqrt(temp_sum / len(loc_data))
-
-
-def test_num_trips():
-    df = pd.DataFrame(columns=['cluster'])
-    n = lf.num_trips(df)
-    assert np.isnan(n)
-
-    df = pd.DataFrame([[1],
-                       [1],
-                       [1]],
-                      columns=['cluster'])
-    n = lf.num_trips(df)
-    assert n == 0
-
-    df = pd.DataFrame([[1],
-                       [np.nan],
-                       [2]],
-                      columns=['cluster'])
-    n = lf.num_trips(df)
-    assert n == 1
-
-    df = pd.DataFrame([[1],
-                       [1],
-                       [np.nan],
-                       [2],
-                       [1],
-                       [np.nan]],
-                      columns=['cluster'])
-    n = lf.num_trips(df)
-    assert n == 2
+    return math.sqrt(tmp / len(loc_data))
 
 
-def test_max_dist():
-    data = pd.DataFrame(columns=['latitude', 'longitude', 'cluster'])
-    d = lf.max_dist(data)
-    assert np.isnan(d)
+def num_trips(data,
+              cluster_c='cluster'):
+    """
+    Compute the number of trips from one
+    location to another.
 
-    data = pd.DataFrame([[12.3, -45.6, 1],
-                         [12.3, -45.6, 1]],
-                        columns=['latitude', 'longitude', 'cluster'])
-    d = lf.max_dist(data)
-    assert d == pytest.approx(0, 0.000001)
+    Parameters:
+    -----------
+    data: DataFrame
+        location data.
 
-    data = pd.DataFrame([[12.3, -45.6, 1],
-                         [43.8, 72.9, 2],
-                         [32.5, 12.9, 3]],
-                        columns=['latitude', 'longitude', 'cluster'])
-    d = lf.max_dist(data)
-    assert d == pytest.approx(11233331.835309023, 0.00001)
+    cluster_c: str
+        Location cluster column.
+        Default value is 'cluster'.
+
+    Returns:
+    --------
+    n_trip: int
+        Number of trips.
+    """
+    data = data.loc[~pd.isnull(data[cluster_c])]
+
+    if len(data) == 0:
+        return np.nan
+
+    data = data.reset_index()
+
+    # previous location
+    p = data.ix[0, cluster_c]
+    n_trip = 0
+
+    for i in range(1, len(data)):
+
+        # current location
+        c = data.ix[i, cluster_c]
+        if p == c:
+            continue
+        else:
+            n_trip += 1
+            p = c
+
+    return n_trip
 
 
-def num_clusters(data, cluster_col='cluster'):
+def max_dist_between_clusters(data,
+                              cluster_c='cluster',
+                              lat_c='latitude',
+                              lon_c='longitude'):
+    """
+    Compute the maximum distance between two
+    location clusters.
+
+    Parameters:
+    -----------
+    data: DataFrame
+        Location data.
+
+    cluster_c: str
+        Location cluster id column.
+
+    lat_c, lon_c: str
+        Latidue and longitude of the cluster
+        locations.
+
+    Returns:
+    --------
+    max_dist: float
+        Maximum distance between two locations in meters.
+    """
+    data = data.loc[~pd.isnull(data[cluster_c])]
+
+    if len(data) == 0:
+        return np.nan
+
+    locations = np.unique(data[cluster_c])
+    if len(locations) == 1:
+        return 0
+
+    # get list of different gps coordinates
+    locations_coord = []
+    for l in locations:
+        df = data.loc[data[cluster_c] == l].reset_index()
+        gps = (df.ix[0, lat_c], df.ix[0, lon_c])
+        locations_coord.append(gps)
+
+    # find maximum distance
+    max_dist = 0
+    for i in range(len(locations) - 1):
+        for j in range(i + 1, len(locations)):
+            d = vincenty(locations_coord[i], locations_coord[j]).m
+            if d > max_dist:
+                max_dist = d
+
+    return max_dist
+
+
+def num_clusters(data, cluster_c='cluster'):
     """
     Compute the number of location clusters, which is
     the number of different places visited.
@@ -141,7 +190,7 @@ def num_clusters(data, cluster_col='cluster'):
     data: DataFrame
         Location data.
 
-    cluster_col: str
+    cluster_c: str
         Location cluster id.
 
     Returns:
@@ -149,7 +198,7 @@ def num_clusters(data, cluster_col='cluster'):
     n: int
         Number of clusters.
     """
-    data = data[[cluster_col]].dropna()
+    data = data[[cluster_c]].dropna()
     if len(data) == 0:
         return 0
     else:
@@ -158,10 +207,9 @@ def num_clusters(data, cluster_col='cluster'):
 
 
 def displacement(data,
-                 lat='latitude',
-                 lon='longitude',
-                 cluster='cluster',
-                 cluster_mapping=None):
+                 lat_c='latitude',
+                 lon_c='longitude',
+                 cluster_c='cluster'):
     """
     Calculate the displacement of the location data,
     which is list of distances traveled from one location
@@ -172,105 +220,45 @@ def displacement(data,
     data: dataframe
         Location data.
 
-    cluster: str
+    cluster_c: str
         Column cluster ids.
         Default value is cluster.
 
-    lat, lon: str
+    lat_c, lon_c: str
         Columns of latitude, and longitude.
         Default values are 'latitude', and
         'longitude' respectively.
-
-    cluster_mapping: dict
-        A mapping from cluster id to
-        gps coordinates.
-        Defaults to None, in which case
-        use latitude and longitude given
-        in location data.
 
     Returns:
     --------
     displace: list
         List of displacements in meters.
     """
-    data = data.loc[~pd.isnull(data[cluster])]
+    data = data.loc[~pd.isnull(data[cluster_c])]
     displace = []
 
-    if len(data) <= 1:
+    if len(data) == 1:
         return displace
 
-    data = data.reset_index()
+    # location history
+    data = data.loc[data[cluster_c] != data[cluster_c].shift()]
 
-    if cluster_mapping is None:
-        prev_idx = 0
-        prev_cluster = data.ix[0, cluster]
-        loc_list = []
-
-        # get location history
-        for i in range(1, len(data)):
-            curr_cluster = data.ix[i, cluster]
-
-            # compute the coordinates of the center
-            # of current location cluster
-            if curr_cluster != prev_cluster:
-                tmp_df = data.loc[(data.index >= prev_idx) &
-                                  (data.index <= i - 1)]
-                coord = motif.get_geo_center(df=tmp_df,
-                                             lat_c=lat,
-                                             lon_c=lon)
-                loc_list.append((coord['latitude'],
-                                 coord['longitude']))
-                prev_idx = i
-                prev_cluster = curr_cluster
-
-        # handle last location
-        tmp_df = data.ix[(data.index >= prev_idx) &
-                         (data.index <= len(data) - 1)]
-        coord = motif.get_geo_center(df=tmp_df,
-                                     lat_c=lat,
-                                     lon_c=lon)
-        loc_list.append((coord['latitude'],
-                         coord['longitude']))
-
-        # compute displacements
-        if len(loc_list) <= 1:
-            return displace
-
-        # compute the distance between different
-        # consecutive locations
-        for i in range(1, len(loc_list)):
-            displace.append(vincenty(loc_list[i-1],
-                                     loc_list[i]).m)
-
-    # use cluster mapping instead of computing
-    # the coordinates of cluster center
-    else:
-        prev_cluster = data.ix[0, cluster]
-        loc_list = []
-
-        # get location history
-        for i in range(1, len(data)):
-            curr_cluster = data.ix[i, cluster]
-            if curr_cluster != prev_cluster:
-                loc_list.append(cluster_mapping[prev_cluster])
-                prev_cluster = curr_cluster
-
-        # handle last location
-        loc_list.append((cluster_mapping[prev_cluster]))
-
-        # compute displacements
-        if len(loc_list) <= 1:
-            return displace
-
-        for i in range(1, len(loc_list)):
-            displace.append(vincenty(loc_list[i-1],
-                                     loc_list[i]).m)
+    # compute displacements
+    prev = None
+    for _, row in data.iterrows():
+        if prev is None:
+            prev = (row[lat_c], row[lon_c])
+            continue
+        curr = (row[lat_c], row[lon_c])
+        d = vincenty(prev, curr).m
+        displace.append(d)
+        prev = curr
 
     return displace
 
 
 def wait_time(data,
-              cluster='cluster',
+              cluster_c='cluster',
               time_c='index'):
     """
     Calculate the waiting time between
@@ -289,7 +277,7 @@ def wait_time(data,
     data: dataframe
         Location data.
 
-    cluster: str
+    cluster_c: str
         Cluster id column.
         Defaults to 'cluster'.
 
@@ -308,14 +296,14 @@ def wait_time(data,
         {cluster_id: waiting time}
     """
     data = data.copy()
-    cluster_col = data[cluster].values
+    cluster_col = data[cluster_c].values
     if time_c == 'index':
         time_col = data.index
     else:
         time_col = data[time_c]
     data = pd.DataFrame()
     data['time'] = time_col
-    data[cluster] = cluster_col
+    data[cluster_c] = cluster_col
     waittime = []
     if len(data) <= 1:
         return waittime, {}
@@ -330,14 +318,14 @@ def wait_time(data,
 
     # skip leading empty entries
     i = 0
-    while i < len(data) and pd.isnull(data.ix[i, cluster]):
+    while i < len(data) and pd.isnull(data.ix[i, cluster_c]):
         i += 1
     curr_c = [i]
 
     # merge waiting time if two or more consecutive
     # locations belong to the same location cluster
     for p in range(i + 1, l):
-        curr_cluster = data.ix[p, cluster]
+        curr_cluster = data.ix[p, cluster_c]
         if pd.isnull(curr_cluster):
             if len(curr_c) == 0:
                 continue
@@ -347,7 +335,7 @@ def wait_time(data,
         else:
             if len(curr_c) == 0:
                 curr_c.append(p)
-            elif data.ix[curr_c[-1], cluster] != curr_cluster:
+            elif data.ix[curr_c[-1], cluster_c] != curr_cluster:
                 wt = data.loc[data.index.isin(curr_c), 'td'].sum()
                 waittime.append(wt.seconds)
                 curr_c = [p]
@@ -361,7 +349,7 @@ def wait_time(data,
 
     # compute the time spent at each location
     cluster_wt = {}
-    grouped = data.groupby(cluster)
+    grouped = data.groupby(cluster_c)
     for i, g in grouped:
         cluster_wt[i] = g['td'].sum().seconds
 
@@ -369,8 +357,8 @@ def wait_time(data,
 
 
 def entropy(data,
-            cluster_col='cluster',
-            time_col='index',
+            cluster_c='cluster',
+            time_c='index',
             wait_time_v=None):
     """
     Calculate entropy, a measure of
@@ -381,66 +369,11 @@ def entropy(data,
     Entropy is computed as the cumulative products
     of proportion and the log of the proportion of
     time spent at each location.
-    【Palmius et al, 2016]
 
-    Parameters:
-    -----------
-    data: dataframe
-        Location data.
+    Normalized entropy is also calculated as a
+    variant of the entropy fieature scaled to be in
+    the range [0, 1].
 
-    cluster_col: str
-        Location cluster column name.
-
-    time_col: str
-        Timestamp column name.
-
-    wait_time_v: tuple
-        Values returned by wait_time().
-
-    Returns:
-    --------
-    ent: float
-        Entropy.
-        Return numpy.nan if entropy can
-        not be calculated.
-    """
-    if len(data) == 0:
-        return np.nan
-
-    if time_col == 'index':
-        time_c = data.index
-    else:
-        time_c = data[time_col]
-
-    total_time = (max(time_c) - min(time_c)).seconds
-
-    # compute waitting time is not provided
-    if wait_time_v is None:
-        wt, cwt = wait_time(data, cluster_col, time_col)
-    else:
-        wt, cwt = wait_time_v
-
-    if len(wt) == 0:
-        return np.nan
-
-    # compute entroy
-    tmp = 0
-    for k in cwt:
-        p = cwt[k] / total_time
-        tmp += p * math.log(p)
-    ent = -tmp
-
-    return ent
-
-
-def norm_entropy(data,
-                 cluster_col='cluster',
-                 time_col='index',
-                 ent=None):
-    """
-    Calculate normalized entropy, a variant of
-    the entropy fieature scaled to be in the
-    range [0, 1].
     This value calcuated by dividing the original
     entropy by the number of different locations.
     【Palmius et al, 2016]
@@ -450,43 +383,67 @@ def norm_entropy(data,
     data: dataframe
         Location data.
 
-    cluster_col: str
+    cluster_c: str
         Location cluster column name.
 
-    time_col: str
+    time_c: str
         Timestamp column name.
 
-    ent: float
-        Original entropy.
+    wait_time_v: tuple
+        Values returned by wait_time().
 
     Returns:
     --------
-    nent: float
-        Entropy.
-        Return numpy.nan if entropy can
-        not be calculated.
+    tuple of (ent, nent)
+        A tuple contains entropy and normalized entropy.
     """
-    # compute original entropy if not provided
-    if ent is None:
-        ent = entropy(data, cluster_col, time_col)
+    # compute entropy
+    if len(data) == 0:
+        ent = np.nan
+    else:
+        if time_c == 'index':
+            time_col = data.index
+        else:
+            time_col = data[time_c]
 
+        total_time = (max(time_col) - min(time_col)).seconds
+
+        # compute waitting time is not provided
+        if wait_time_v is None:
+            wt, cwt = wait_time(data, cluster_c, time_c)
+        else:
+            wt, cwt = wait_time_v
+
+        if len(wt) == 0:
+            ent = np.nan
+        else:
+            ent = 0
+            for k in cwt:
+                p = cwt[k] / total_time
+                ent -= p * math.log(p)
+
+    # compute normalized entropy
     if np.isnan(ent):
         nent = np.nan
     else:
-        unique_loc = np.unique(data[cluster_col].dropna())
-        dn = math.log(len(unique_loc))
-        if abs(dn - 0) < 0.000001:
-            return np.nan
-        else:
-            nent = ent / math.log(len(unique_loc))
+        unique_loc = np.unique(data[cluster_c].dropna())
+        n = len(unique_loc)
 
-    return nent
+        # if the number of clusters is one,
+        # the log value would be 0 and thus
+        # can't be used as the denominator
+        if n == 1:
+            nent = np.nan
+        else:
+            nent = ent / math.log(n)
+
+    return ent, nent
 
 
 def loc_var(data,
-            lat_col='latitude',
-            lon_col='longitude',
-            cluster_col='cluster'):
+            lat_c='latitude',
+            lon_c='longitude',
+            cluster_c='cluster'):
     """
     Location variance, an indication of
     how much the individual is moving
@@ -500,7 +457,7 @@ def loc_var(data,
     data: dataframe
         Location data.
 
-    lat_col, lon_col, cluster_col: str
+    lat_c, lon_c, cluster_c: str
         Latitude, longitude, and cluster
         columns. Default values are 'latitude',
         'longitude', and 'cluster' respectively.
@@ -510,10 +467,10 @@ def loc_var(data,
     lv: float
         Location variance.
     """
-    data = data.loc[~pd.isnull(data[cluster_col])]
+    data = data.loc[~pd.isnull(data[cluster_c])]
     if len(data) != 0:
-        lat_v = np.var(data[lat_col])
-        lon_v = np.var(data[lon_col])
+        lat_v = np.var(data[lat_c])
+        lon_v = np.var(data[lon_c])
         if abs(lat_v + lon_v) < 0.000000001:
             lv = np.nan
         else:
@@ -525,8 +482,8 @@ def loc_var(data,
 
 def home_stay(data,
               home_loc,
-              cluster_col='cluster',
-              time_col='index',
+              cluster_c='cluster',
+              time_c='index',
               wait_time_v=None):
     """
     Compute the time spent at home location.
@@ -556,15 +513,15 @@ def home_stay(data,
     hs: float
         Time spent at home location.
     """
-    if home_loc not in data[cluster_col].values:
+    if home_loc not in data[cluster_c].values:
         hs = np.nan
     else:
 
         # compute waitting time if not provided
         if wait_time_v is None:
             wt, cwt = wait_time(data,
-                                cluster=cluster_col,
-                                time_c=time_col)
+                                cluster_c=cluster_c,
+                                time_c=time_c)
         else:
             wt, cwt = wait_time_v
 
@@ -577,8 +534,8 @@ def home_stay(data,
 
 
 def trans_time(data,
-               cluster_col='cluster',
-               time_col='index',
+               cluster_c='cluster',
+               time_c='index',
                wait_time_v=None):
     """
     Calculate the total time spent in travelling
@@ -590,7 +547,7 @@ def trans_time(data,
     data: dataframe
         Location data.
 
-    cluster: str
+    cluster_c: str
         Cluster id column.
         Defaults to 'cluster'.
 
@@ -610,32 +567,31 @@ def trans_time(data,
     # compute waitting time if not provided
     if wait_time_v is None:
         wt, cwt = wait_time(data,
-                            cluster=cluster_col,
-                            time_c=time_col)
+                            cluster_c=cluster_c,
+                            time_c=time_c)
     else:
         wt, cwt = wait_time_v
 
     if len(wt) == 0:
         tt = np.nan
     else:
-        if time_col == 'index':
-            time_c = data.index
+        if time_c == 'index':
+            time_col = data.index
         else:
-            time_c = data[time_col]
+            time_col = data[time_c]
 
         # compute total time and subtract waitting time
         # from it
-        total_time = (max(time_c) - min(time_c)).seconds
+        total_time = (max(time_col) - min(time_col)).seconds
         tt = total_time - sum(wt)
 
     return tt
 
 
 def total_dist(data,
-               cluster_col='cluster',
-               lat_col='latitude',
-               lon_col='longitude',
-               cluster_mapping=None,
+               cluster_c='cluster',
+               lat_c='latitude',
+               lon_c='longitude',
                dispmnt=None):
     """
     The sum of travel distance in meters.
@@ -649,16 +605,12 @@ def total_dist(data,
     data: DataFrame
         Location data.
 
-    cluster_col: str
+    cluster_c: str
         Location cluster id column.
 
-    lat_col, lon_col: str
+    lat_c, lon_c: str
         Latidue and longitude of the cluster
         locations.
-
-    cluster_mapping: dict
-        A dictionary storing the coordinates
-        of location cluster locations.
 
     dispmnt: list
         List of displacements returned by displacement().
@@ -670,10 +622,58 @@ def total_dist(data,
     """
     if dispmnt is None:
         dispmnt = displacement(data=data,
-                               lat=lat_col,
-                               lon=lon_col,
-                               cluster=cluster_col,
-                               cluster_mapping=cluster_mapping)
+                               lat_c=lat_c,
+                               lon_c=lon_c,
+                               cluster_c=cluster_c)
 
     td = sum(dispmnt)
     return td
+
+
+def convert_geohash_to_gps(geohash_str):
+    """
+    Convert geohash value to gps value.
+
+    Parameters:
+    -----------
+    geohash_str: str
+        Geohash string.
+
+    Returns:
+    --------
+    gps: tuple of floats
+        GPS values.
+        (latitude, longitude)
+    """
+    lat, lon = geohash.decode(geohash_str)
+    return lat, lon
+
+
+def convert_and_append_geohash(data,
+                               cluster_c='cluster',
+                               lat_c='latitude',
+                               lon_c='longitude'):
+    """
+    Convert geohash to gps and append
+    to the dataframe as new columns.
+
+    Parameters:
+    -----------
+    data: DataFrame
+        Location data
+
+    cluster_c: str
+        Location cluster column.
+
+    Returns:
+    --------
+    data: DataFrame
+        Location data with converted geohash value.
+    """
+    for idx, row in data.iterrows():
+        if pd.isnull(row[cluster_c]):
+            continue
+        lat, lon = convert_geohash_to_gps(row[cluster_c])
+        data.loc[idx, lat_c] = lat
+        data.loc[idx, lon_c] = lon
+    return data

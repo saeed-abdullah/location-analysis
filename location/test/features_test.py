@@ -9,171 +9,114 @@ import geohash
 import numpy as np
 import pandas as pd
 import pytest
-import location.location_features as lf
+import location.features as lf
 from geopy.distance import vincenty
 import math
+import geohash
 
 
-def test_gyrationradius():
+def test_gyration_radius():
     # test data
-    data_stay_region = ['dr5xfdt',
-                        'dr5xfdt',
-                        'dr5xfdt',
-                        'dr5rw5u',
-                        'dr5rw5u',
-                        'dr5rw5u',
-                        'dr5rw5u',
-                        'dr5rw5u',
-                        'dr5rw5u',
-                        'dr5rw5u']
-    coordinates = [geohash.decode(x) for x in data_stay_region]
-    lat = [c[0] for c in coordinates]
-    lon = [c[1] for c in coordinates]
+    cluster_col = ['dr5xfdt',
+                   'dr5xfdt',
+                   'dr5xfdt',
+                   'dr5rw5u',
+                   'dr5rw5u',
+                   'dr5rw5u',
+                   'dr5rw5u',
+                   'dr5rw5u',
+                   'dr5rw5u',
+                   'dr5rw5u']
     df = pd.DataFrame()
-    df['cluster'] = data_stay_region
-    df['latitude'] = lat
-    df['longitude'] = lon
+    df['cluster'] = cluster_col
+    t = pd.to_datetime('2015-04-14 06:52:00')
+    df['time'] = pd.date_range(start=t, periods=10, freq='1d')
+    df = df.set_index('time')
+    for idx, row in df.iterrows():
+        lat, lon = geohash.decode(row['cluster'])
+        df.loc[idx, 'latitude'] = lat
+        df.loc[idx, 'longitude'] = lon
 
     # expected result
     expected = 7935.926632803189
 
     # tolerance = 0.01 meter
-    actual_value = lf.gyrationradius(df)
+    actual_value = lf.gyration_radius(df)
     assert actual_value == pytest.approx(expected, 0.01)
 
     # check when k is larger the number of different visited locations
-    assert np.isnan(lf.gyrationradius(df, k=5))
+    assert np.isnan(lf.gyration_radius(df, k=5))
 
     # add the last gps point for five more times
-    add_df = pd.DataFrame()
-    add_df['cluster'] = ['dr5rw5u'] * 5
-    add_df['latitude'] = [lat[-1]] * 5
-    add_df['longitude'] = [lon[-1]] * 5
-    df = pd.concat([df, add_df])
+    p = df.index[-1]
+    for i in range(5):
+        p += pd.to_timedelta('1d')
+        lat, lon = geohash.decode('dr5rw5u')
+        df.loc[p, 'cluster'] = 'dr5rw5u'
+        df.loc[p, 'latitude'] = lat
+        df.loc[p, 'longitude'] = lon
 
     expected = 6927.0444113855365
-    assert lf.gyrationradius(df) == pytest.approx(expected, 0.01)
+    assert lf.gyration_radius(df) == pytest.approx(expected, 0.01)
 
     # test the k-th radius of gyration
-    add_df = pd.DataFrame()
-    add_df['cluster'] = ['dr5xg5g'] * 2
-    coordinate = geohash.decode('dr5xg5g')
-    add_df['latitude'] = coordinate[0]
-    add_df['longitude'] = coordinate[1]
-    df = pd.concat([df, add_df])
-    assert lf.gyrationradius(df, k=2) == pytest.approx(expected, 0.01)
+    p = df.index[-1]
+    for i in range(2):
+        p += pd.to_timedelta('1d')
+        df.loc[p, 'cluster'] = 'dr5xg5g'
+        lat, lon = geohash.decode('dr5xg5g')
+        df.loc[p, 'latitude'] = lat
+        df.loc[p, 'longitude'] = lon
+    assert lf.gyration_radius(df, k=2) == pytest.approx(expected, 0.01)
 
 
-def num_trips(data,
-              cluster_col='cluster'):
-    """
-    Compute the number of trips from one
-    location to another.
+def test_num_trips():
+    df = pd.DataFrame(columns=['cluster'])
+    n = lf.num_trips(df)
+    assert np.isnan(n)
 
-    Parameters:
-    -----------
-    data: DataFrame
-        location data.
+    df = pd.DataFrame([[1],
+                       [1],
+                       [1]],
+                      columns=['cluster'])
+    n = lf.num_trips(df)
+    assert n == 0
 
-    cluster_col: str
-        Location cluster column.
-        Default value is 'cluster'.
+    df = pd.DataFrame([[1],
+                       [np.nan],
+                       [2]],
+                      columns=['cluster'])
+    n = lf.num_trips(df)
+    assert n == 1
 
-    Returns:
-    --------
-    n_trip: int
-        Number of trips.
-    """
-    data = data.loc[~pd.isnull(data[cluster_col])]
-
-    if len(data) == 0:
-        return np.nan
-
-    data = data.reset_index()
-
-    # previous location
-    p = data.ix[0, cluster_col]
-    n_trip = 0
-
-    for i in range(1, len(data)):
-
-        # current location
-        c = data.ix[i, cluster_col]
-        if p == c:
-            continue
-        else:
-            n_trip += 1
-            p = c
-
-    return n_trip
+    df = pd.DataFrame([[1],
+                       [1],
+                       [np.nan],
+                       [2],
+                       [1],
+                       [np.nan]],
+                      columns=['cluster'])
+    n = lf.num_trips(df)
+    assert n == 2
 
 
-def max_dist(data,
-             cluster_col='cluster',
-             lat_col='latitude',
-             lon_col='longitude',
-             cluster_mapping=None):
-    """
-    Compute the maximum distance between two locations.
+def test_max_dist_between_clusters():
+    data = pd.DataFrame(columns=['latitude', 'longitude', 'cluster'])
+    d = lf.max_dist_between_clusters(data)
+    assert np.isnan(d)
 
-    Parameters:
-    -----------
-    data: DataFrame
-        Location data.
+    data = pd.DataFrame([[12.3, -45.6, 1],
+                         [12.3, -45.6, 1]],
+                        columns=['latitude', 'longitude', 'cluster'])
+    d = lf.max_dist_between_clusters(data)
+    assert d == pytest.approx(0, 0.000001)
 
-    cluster_col: str
-        Location cluster id column.
-
-    lat_col, lon_col: str
-        Latidue and longitude of the cluster
-        locations.
-
-    cluster_mapping: dict
-        A dictionary storing the coordinates
-        of location cluster locations.
-        {location_cluster: coordinates}
-
-    Returns:
-    --------
-    max_dist: float
-        Maximum distance between two locations in meters.
-    """
-    data = data.loc[~pd.isnull(data[cluster_col])]
-
-    if len(data) == 0:
-        return np.nan
-
-    locations = np.unique(data[cluster_col])
-    if len(locations) == 1:
-        return 0
-
-    locations_coord = []
-    # calculate coordinates
-    if cluster_mapping is None:
-
-        # compute the coordinates of each
-        # of the location clusters
-        for l in locations:
-            df = data.loc[data[cluster_col] == l]
-            coord = motif.get_geo_center(df=df,
-                                         lat_c=lat_col,
-                                         lon_c=lon_col)
-            coord = (coord['latitude'], coord['longitude'])
-            locations_coord.append(coord)
-    else:
-        # use the coordinates provided by the mapping
-        for l in locations:
-            locations_coord.append(cluster_mapping[l])
-
-    # find maximum distance
-    max_dist = 0
-    for i in range(len(locations) - 1):
-        for j in range(i + 1, len(locations)):
-            d = vincenty(locations_coord[i], locations_coord[j]).m
-            if d > max_dist:
-                max_dist = d
-
-    return max_dist
+    data = pd.DataFrame([[12.3, -45.6, 1],
+                         [43.8, 72.9, 2],
+                         [32.5, 12.9, 3]],
+                        columns=['latitude', 'longitude', 'cluster'])
+    d = lf.max_dist_between_clusters(data)
+    assert d == pytest.approx(11233331.835309023, 0.00001)
 
 
 def test_num_clusters():
@@ -231,20 +174,6 @@ def test_displacement():
     assert len(displace) == 2
     assert displace[0] == pytest.approx(3118.1779973248804, 0.0001)
     assert displace[1] == pytest.approx(3103.7813441942367, 0.0001)
-
-    df = pd.DataFrame(columns=['cluster'])
-    df['cluster'] = [np.nan, np.nan,
-                     'dr5xejs', 'dr5xejs',
-                     np.nan, 'dr5xef2',
-                     'dr5xef2', 'dr5xejs']
-    cluster_mapping = {'dr5xejs': geohash.decode('dr5xejs'),
-                       'dr5xef2': geohash.decode('dr5xef2')}
-    displace = lf.displacement(df, cluster_mapping=cluster_mapping)
-    assert len(displace) == 2
-    expected = vincenty(cluster_mapping['dr5xejs'],
-                        cluster_mapping['dr5xef2']).m
-    assert displace[0] == pytest.approx(expected, 0.0001)
-    assert displace[1] == pytest.approx(expected, 0.0001)
 
 
 def test_wait_time():
@@ -378,12 +307,16 @@ def test_wait_time():
 
 def test_entropy():
     df = pd.DataFrame(columns=['cluster', 'time'])
-    assert np.isnan(lf.entropy(df, time_col='time'))
+    ent, nent = lf.entropy(df, time_c='time')
+    assert np.isnan(ent)
+    assert np.isnan(nent)
 
     df = pd.DataFrame(columns=['cluster', 'time'])
     df['cluster'] = ['dr5xejs']
     df['time'] = [pd.to_datetime('2015-04-14 07:46:43')]
-    assert np.isnan(lf.entropy(df, time_col='time'))
+    ent, nent = lf.entropy(df, time_c='time')
+    assert np.isnan(ent)
+    assert np.isnan(nent)
 
     df = pd.DataFrame(columns=['cluster', 'time'])
     df['cluster'] = ['dr5xejs']
@@ -393,8 +326,9 @@ def test_entropy():
     df['time'] = [pd.to_datetime('2015-04-14 07:00:00'),
                   pd.to_datetime('2015-04-14 07:20:00'),
                   pd.to_datetime('2015-04-14 07:40:00')]
-    ent = lf.entropy(df, time_col='time')
+    ent, nent = lf.entropy(df, time_c='time')
     assert ent == pytest.approx(0.5623351446188083, 0.00001)
+    assert nent == pytest.approx(0.56233514 / math.log(2), 0.00001)
 
     df = pd.DataFrame(columns=['cluster', 'time'])
     df['cluster'] = ['dr5xejs']
@@ -405,41 +339,9 @@ def test_entropy():
                   pd.to_datetime('2015-04-14 07:20:00'),
                   pd.to_datetime('2015-04-14 07:40:00'),
                   pd.to_datetime('2015-04-14 08:00:00')]
-    ent = lf.entropy(df, time_col='time')
+    ent, nent = lf.entropy(df, time_c='time')
     assert ent == pytest.approx(1.0114042647073516, 0.00001)
-
-
-def test_norm_entropy():
-    df = pd.DataFrame(columns=['cluster', 'time'])
-    assert np.isnan(lf.norm_entropy(df, time_col='time'))
-
-    df = pd.DataFrame(columns=['cluster', 'time'])
-    df['cluster'] = ['dr5xejs']
-    df['time'] = [pd.to_datetime('2015-04-14 07:46:43')]
-    assert np.isnan(lf.norm_entropy(df, time_col='time'))
-
-    df = pd.DataFrame(columns=['cluster', 'time'])
-    df['cluster'] = ['dr5xejs']
-    df['time'] = [pd.to_datetime('2015-04-14 07:46:43')]
-    df = pd.DataFrame(columns=['cluster', 'time'])
-    df['cluster'] = ['dr5xejs', 'dr5xejs', 'dr5xef2']
-    df['time'] = [pd.to_datetime('2015-04-14 07:00:00'),
-                  pd.to_datetime('2015-04-14 07:20:00'),
-                  pd.to_datetime('2015-04-14 07:40:00')]
-    ent = lf.norm_entropy(df, time_col='time')
-    assert ent == pytest.approx(0.56233514 / math.log(2), 0.00001)
-
-    df = pd.DataFrame(columns=['cluster', 'time'])
-    df['cluster'] = ['dr5xejs']
-    df['time'] = [pd.to_datetime('2015-04-14 07:46:43')]
-    df = pd.DataFrame(columns=['cluster', 'time'])
-    df['cluster'] = ['dr5xejs', 'dr5xejs', 'dr5xef2', 'dr5xefq']
-    df['time'] = [pd.to_datetime('2015-04-14 07:00:00'),
-                  pd.to_datetime('2015-04-14 07:20:00'),
-                  pd.to_datetime('2015-04-14 07:40:00'),
-                  pd.to_datetime('2015-04-14 08:00:00')]
-    ent = lf.norm_entropy(df, time_col='time')
-    assert ent == pytest.approx(1.0114042 / math.log(3), 0.00001)
+    assert nent == pytest.approx(1.0114042 / math.log(3), 0.00001)
 
 
 def test_loc_var():
@@ -456,27 +358,27 @@ def test_loc_var():
 
 def test_home_stay():
     df = pd.DataFrame(columns=['cluster', 'time'])
-    hs = lf.home_stay(df, 'abc', time_col='time')
+    hs = lf.home_stay(df, 'abc', time_c='time')
     assert np.isnan(hs)
 
     df = pd.DataFrame(columns=['cluster', 'time'])
     df['cluster'] = ['dr5xejs', np.nan]
     df['time'] = [pd.to_datetime('2015-04-14 07:46:43'),
                   pd.to_datetime('2015-04-14 07:56:43')]
-    hs = lf.home_stay(df, 'abc', time_col='time')
+    hs = lf.home_stay(df, 'abc', time_c='time')
     assert np.isnan(hs)
 
     df = pd.DataFrame(columns=['cluster', 'time'])
     df['cluster'] = ['dr5xejs']
     df['time'] = [pd.to_datetime('2015-04-14 07:46:43')]
-    hs = lf.home_stay(df, 'dr5xejs', time_col='time')
+    hs = lf.home_stay(df, 'dr5xejs', time_c='time')
     assert np.isnan(hs)
 
     df = pd.DataFrame(columns=['cluster', 'time'])
     df['cluster'] = ['dr5xejs', 'dr5xejs']
     df['time'] = [pd.to_datetime('2015-04-14 02:00:00'),
                   pd.to_datetime('2015-04-14 03:00:00')]
-    hs = lf.home_stay(df, 'dr5xejs', time_col='time')
+    hs = lf.home_stay(df, 'dr5xejs', time_c='time')
     assert hs == 3600
 
     df = pd.DataFrame(columns=['cluster', 'time'])
@@ -488,20 +390,20 @@ def test_home_stay():
                   pd.to_datetime('2015-04-14 07:20:00'),
                   pd.to_datetime('2015-04-14 07:40:00'),
                   pd.to_datetime('2015-04-14 08:00:00')]
-    hs = lf.home_stay(df, 'dr5xef2', time_col='time')
+    hs = lf.home_stay(df, 'dr5xef2', time_c='time')
     assert hs == 1200
 
 
 def test_trans_time():
     df = pd.DataFrame(columns=['cluster', 'time'])
-    tt = lf.trans_time(df, time_col='time')
+    tt = lf.trans_time(df, time_c='time')
     assert np.isnan(tt)
 
     df = pd.DataFrame(columns=['cluster', 'time'])
     df['cluster'] = ['dr5xejs', np.nan]
     df['time'] = [pd.to_datetime('2015-04-14 07:40:00'),
                   pd.to_datetime('2015-04-14 08:00:00')]
-    tt = lf.trans_time(df, time_col='time')
+    tt = lf.trans_time(df, time_c='time')
     assert tt == 600
 
     df = pd.DataFrame(columns=['cluster', 'time'])
@@ -535,10 +437,25 @@ def test_total_dist():
                       columns=['latitude', 'longitude', 'cluster'])
     assert lf.total_dist(df) == pytest.approx(16520745.44722021, 0.00001)
 
-    cluster_map = {1: (12.3, -45.6),
-                   2: (43.8, 72.9),
-                   3: (32.5, 12.9)}
-    df = pd.DataFrame([1, 2, 3],
-                      columns=['cluster'])
-    td = lf.total_dist(df, cluster_mapping=cluster_map)
-    assert td == pytest.approx(16520745.44722021, 0.00001)
+
+def test_convert_geohash_to_gps():
+    x = geohash.encode(30, 100)
+    lat, lon = lf.convert_geohash_to_gps(x)
+    lat_e, lon_e = geohash.decode(x)
+    assert lat == pytest.approx(lat_e, 0.00001)
+    assert lon == pytest.approx(lon_e, 0.00001)
+
+
+def test_convert_and_append_geohash():
+    df = pd.DataFrame()
+    df['cluster'] = ['dr5rw5u', 'dr5rw5u', np.nan, 'dr5rw52']
+    lat1, lon1 = geohash.decode('dr5rw5u')
+    lat2, lon2 = geohash.decode('dr5rw52')
+    d = [['dr5rw5u', lat1, lon1],
+         ['dr5rw5u', lat1, lon1],
+         [np.nan, np.nan, np.nan],
+         ['dr5rw52', lat2, lon2]]
+    df2 = pd.DataFrame(d, columns=['cluster',
+                                   'latitude',
+                                   'longitude'])
+    assert df2.equals(lf.convert_and_append_geohash(df))
