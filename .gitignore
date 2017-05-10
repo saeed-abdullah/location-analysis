@@ -26,3 +26,7 @@ var/
 
 # pytest
 .cache/
+
+# test data
+*.csv
+localtest_*
