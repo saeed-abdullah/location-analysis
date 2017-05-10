@@ -3,6 +3,3 @@ python-geohash==0.8.5
 geopy==1.11.0
 networkx>=1.11
 
-# Anvil
--e git+https://github.com/saeed-abdullah/Anvil#egg=Anvil-0.1.0
-

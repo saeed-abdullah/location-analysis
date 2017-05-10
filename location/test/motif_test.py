@@ -52,6 +52,31 @@ def get_nearby_point(lon, lat, dist_m, bearing=0):
     return dist.destination(origin, bearing=bearing)
 
 
+def test_convert_timezone():
+    timezone = "America/Los_Angeles"
+    rng = pd.date_range('1/1/2011', periods=14, freq='1H')
+    ts = pd.DataFrame(pd.np.random.randn(len(rng)), index=rng)
+
+    # todo: check other parameters
+    converted_rng = motif.convert_time_zone(ts, should_localize="UTC",
+                                            to_timezone=timezone)
+    assert converted_rng.index.tz.zone == timezone
+
+
+def test_get_df_slices():
+    rng = pd.date_range('1/1/2011', periods=14, freq='D')
+    ts = pd.DataFrame(pd.np.random.randn(len(rng)), index=rng)
+    slices = pd.date_range('1/1/2011', periods=3, freq='7D')
+
+    l = list(motif.get_df_slices(ts, slices))
+    assert len(l) == len(slices) - 1
+
+    for x in l:
+        assert len(x) == 7
+
+    assert l[0].index[0] == slices[0]
+
+
 def test_compute_geo_hash():
     coords = [{'lat': 0, 'lon': 0},
               {'lat': -90, 'lon': 0},
