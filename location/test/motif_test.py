@@ -400,7 +400,7 @@ def test_load_nodes():
     assert len(actual) == 1
     assert actual[0][0] == start
     # columns in same order
-    assert node.equals(actual[0][1].sort(axis=1))
+    assert node.equals(actual[0][1].sort_index(axis=1))
 
 
 def test_compute_nodes():
@@ -448,8 +448,8 @@ def test_compute_nodes():
                                                      precision=7)
 
     # columns in same order
-    expected = expected.sort(axis=1)
-    assert expected.equals(stay.sort(axis=1))
+    expected = expected.sort_index(axis=1)
+    assert expected.equals(stay.sort_index(axis=1))
 
     # expected nodes
     index = pd.date_range(start=start, periods=48, freq='30min')
