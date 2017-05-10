@@ -597,6 +597,8 @@ def test_load_locatoin_data():
     loaded = lf._load_location_data(f, **args)
     df['time'] = pd.to_datetime(df['time'])
     df = df.set_index('time', drop=False)
+    df = df.tz_localize('UTC')
+    df = df.tz_convert('America/New_York')
     df = df.sort_index()
     assert loaded.equals(df)
 

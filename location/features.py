@@ -784,7 +784,13 @@ def to_weekly(data):
     return weekly
 
 
-def _load_location_data(path, time_c, lat_c, lon_c, cluster_c):
+def _load_location_data(path,
+                        time_c,
+                        lat_c,
+                        lon_c,
+                        cluster_c,
+                        local_tz='UTC',
+                        convert_tz='America/New_York'):
     """
     Load location data, convert time column to DataTime objects
     and set it as index.
@@ -797,6 +803,10 @@ def _load_location_data(path, time_c, lat_c, lon_c, cluster_c):
     time_c, lat_c, lon_c, cluster_c: str
         Time, latitude, longitidue, cluster columns.
 
+    local_tz, convert_tz: str
+        Local and target timezones. Defaut values are
+        'UTC' and 'America/New_York'.
+
     Returns:
     --------
     df: DataFrame
@@ -805,6 +815,8 @@ def _load_location_data(path, time_c, lat_c, lon_c, cluster_c):
     df = pd.read_csv(path, usecols=[time_c, lat_c, lon_c, cluster_c])
     df[time_c] = pd.to_datetime(df[time_c])
     df = df.set_index(time_c, drop=False)
+    df = df.tz_localize(local_tz)
+    df = df.tz_convert(convert_tz)
     df = df.sort_index()
     return df
 
@@ -884,10 +896,10 @@ def main():
     time_c = loc_config['time_c']
 
     # read location data
-    df = _load_location_data(args.file, **loc_config)
+    data = _load_location_data(args.file, **loc_config)
 
     # preprocess data
-    df = convert_and_append_geohash(data=df,
+    data = convert_and_append_geohash(data=data,
                                     cluster_c=loc_config['cluster_c'],
                                     lat_c=loc_config['lat_c'],
                                     lon_c=loc_config['lon_c'])
@@ -896,12 +908,12 @@ def main():
     subsets = config['subsets']
     for k in subsets:
         if k == 'daily':
-            df = to_daily(df, **subsets[k]['args'])
+            df = to_daily(data, **subsets[k]['args'])
             features = subsets[k]['features']
             ret = _generate_fetures(df, features)
             ret.to_csv('daily.csv')
         if k == 'weekly':
-            df = to_weekly(df, **subsets[k]['args'])
+            df = to_weekly(data)
             features = subsets[k]['features']
             ret = _generate_fetures(df, features)
             ret.to_csv('weekly.csv')
