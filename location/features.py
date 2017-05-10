@@ -13,7 +13,7 @@ import pytz
 import datetime
 import geohash
 import argparse
-import json
+import yaml
 
 
 def gyration_radius(data,
@@ -875,7 +875,7 @@ def main():
     args = parser.parse_args()
 
     with open(args.config) as f:
-        config = json.load(f)
+        config = yaml.load(f)
 
     loc_config = config['location_data_args']
     cluster_c = loc_config['cluster_c']
