@@ -195,10 +195,10 @@ def num_clusters(data, cluster_c='cluster'):
         return n
 
 
-def displacement(data,
-                 lat_c='latitude',
-                 lon_c='longitude',
-                 cluster_c='cluster'):
+def displacements(data,
+                  lat_c='latitude',
+                  lon_c='longitude',
+                  cluster_c='cluster'):
     """
     Calculate the displacement of the location data,
     which is list of distances traveled from one location
@@ -843,7 +843,7 @@ def _generate_fetures(data, features):
                     'num_clusters': num_clusters,
                     'max_dist_between_clusters': max_dist_between_clusters,
                     'num_clusters': num_clusters,
-                    'displacement': displacement,
+                    'displacements': displacements,
                     'wait_time': wait_time,
                     'entropy': entropy,
                     'loc_var': loc_var,

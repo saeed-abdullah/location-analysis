@@ -141,14 +141,14 @@ def test_num_clusters():
     assert n == 4
 
 
-def test_displacement():
+def test_displacements():
     df = pd.DataFrame(columns=['cluster'])
-    assert len(lf.displacement(df)) == 0
+    assert len(lf.displacements(df)) == 0
 
     df['cluster'] = [np.nan, np.nan, 'dr5xejs', 'dr5xejs']
     df['latitude'] = [40.749562, 40.749563, 40.724195, 40.724248]
     df['longitude'] = [-73.710272, -73.706997, -73.690573, -73.690747]
-    assert len(lf.displacement(df)) == 0
+    assert len(lf.displacements(df)) == 0
 
     df = pd.DataFrame(columns=['cluster'])
     df['cluster'] = [np.nan, np.nan,
@@ -163,7 +163,7 @@ def test_displacement():
                        -73.690737, -73.690737,
                        -73.690737, -73.662139,
                        -73.662139]
-    displace = lf.displacement(df)
+    displace = lf.displacements(df)
     assert len(displace) == 1
     assert displace[0] == pytest.approx(3118.1779973248804, 0.0001)
 
@@ -180,7 +180,7 @@ def test_displacement():
                        -73.690737, -73.690737,
                        -73.690737, -73.662139,
                        -73.662139, -73.690753]
-    displace = lf.displacement(df)
+    displace = lf.displacements(df)
     assert len(displace) == 2
     assert displace[0] == pytest.approx(3118.1779973248804, 0.0001)
     assert displace[1] == pytest.approx(3103.7813441942367, 0.0001)
