@@ -9,7 +9,6 @@
 """
 
 import argparse
-from collections import Counter
 import json
 import math
 
@@ -18,14 +17,121 @@ from collections import Counter
 from geopy.distance import vincenty
 import networkx as nx
 
-# install anvil from https://github.com/saeed-abdullah/Anvil
-from anvil.utils import get_df_slices
-from anvil.api import convert_time_zone
-
 from geopy import distance, point
 import geohash
 import pandas as pd
 import numpy as np
+
+
+def convert_time_zone(df, column_name=None,
+                      should_localize='UTC',
+                      sort_index=True,
+                      to_timezone='America/New_York'):
+    """
+    Performs timezone conversion.
+
+    This function does two things:
+
+        1. Convert timezone of the given column (or index).
+        2. And, create a DataFrame with the converted timestamps as index.
+
+    Parameters
+    ----------
+
+    df : DataFrame
+
+    column_name : str
+        If a column should be used instead of the index. If the
+        `column_name` is not None, then the column would be set as index
+        after converting to date-time values using `pd.to_datetime`.
+
+    sort_index: bool
+        If the index of the resulting DataFrame
+        should be sorted ascending order. Default is `True`.
+
+    should_localize: str
+        If the index should be localized to a specific time zone.
+        If the value is `None`, then no localization is performed.
+        Default is UTC.
+
+
+    to_timezone : str
+        The destination timezone. Default is America/New_York.
+
+
+    Returns
+    -------
+    df : DataFrame
+        DataFrame with converted timestamps as index values
+    """
+
+    if column_name is not None:
+        df = df.set_index(pd.to_datetime(df[column_name]))
+
+    if sort_index:
+        df = df.sort_index()
+
+    if should_localize is not None:
+        df = df.tz_localize(should_localize)
+
+    return df.tz_convert(to_timezone)
+
+
+def get_df_slices(df, sorted_slices):
+    """
+    Gets DataFrame slices.
+
+    This function performs advanced indexing
+    of DataFrame based on given slices. For
+    every two consecutive elements in the slice,
+    the index is compared:
+    slice[i] <= index < slice[i + 1] and matching
+    rows are returned.
+
+    For example, this function can be used to group
+    rows in same week by having a DataFrame with
+    `DateTimeIndex` and slices containing DateTime
+    elements 7 days apart.
+
+    Parameters
+    ----------
+
+    df : DataFrame
+
+    sorted_slices : iterables
+        List of sorted (ascending) slicing
+        elements which are comparable against
+        the given DataFrame index.
+
+
+    Returns
+    -------
+    generator
+        Rows matching to the slices. In other words,
+        i-th iteration of the generator object will
+        result in rows r such that:
+        sorted_slices[i] >= r.index < sorted_slices[i + 1].
+
+    Notes
+    -----
+        Slice elements must be sorted (ascending) and comparable
+        against index of DataFrame.
+
+    """
+
+    for index in range(0, len(sorted_slices) - 1):
+        s = sorted_slices[index]
+        e = sorted_slices[index + 1]
+
+        # we can't use slice here (e.g., df.loc[s:e]) because
+        # the slicing include the end bound.
+
+        # since version 0.20.1, map on index returns
+        # an Index instead of an array. However, the filtering
+        # expects an boolean array. So, we need to convert
+        # the index to an array
+        criterion = df.index.map(lambda z: z >= s and z < e).get_values()
+        yield df.loc[criterion]
 
 
 def compute_geo_hash(df, lat_c='lat',
@@ -880,9 +986,10 @@ def get_home_location(loc_data, sr_col='stay_region'):
         Home location in geohash form.
         None if there is no data from 0:00 to 6:00.
     """
-    night_hours = list(range(6))
+    night_hr = list(range(6))
     loc_data = loc_data.dropna()
-    night_locs = loc_data[loc_data.index.map(lambda z: z.hour in night_hours)]
+    criterion = loc_data.index.map(lambda z: z.hour in night_hr).get_values()
+    night_locs = loc_data[criterion]
 
     # if no home location is detected,
     # do not insert home location.
@@ -931,7 +1038,6 @@ def insert_home_location(data,
     filtered_nodes: tuple
         Filtered nodes.
     """
-    locs = data.copy()
     filtered_nodes = deepcopy(nodes)
 
     # find the home location
@@ -1038,7 +1144,6 @@ def filter_out_travelling_day(data,
     filtered_nodes: tuple
         Filtered nodes.
     """
-    locs = data.copy()
     filtered_nodes = []
 
     # find the home location
