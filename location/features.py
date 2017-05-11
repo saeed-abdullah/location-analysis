@@ -900,9 +900,9 @@ def main():
 
     # preprocess data
     data = convert_and_append_geohash(data=data,
-                                    cluster_c=loc_config['cluster_c'],
-                                    lat_c=loc_config['lat_c'],
-                                    lon_c=loc_config['lon_c'])
+                                      cluster_c=loc_config['cluster_c'],
+                                      lat_c=loc_config['lat_c'],
+                                      lon_c=loc_config['lon_c'])
 
     # compute features
     subsets = config['subsets']
