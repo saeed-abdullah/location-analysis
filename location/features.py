@@ -581,7 +581,7 @@ def total_dist(data,
                cluster_c='cluster',
                lat_c='latitude',
                lon_c='longitude',
-               dispmnt=None):
+               displacement=None):
     """
     The sum of travel distance in meters.
     This value computed by taking the sum
@@ -601,7 +601,7 @@ def total_dist(data,
         Latidue and longitude of the cluster
         locations.
 
-    dispmnt: list
+    displacement: list
         List of displacements returned by displacement().
 
     Returns:
@@ -609,13 +609,13 @@ def total_dist(data,
     td: float
         Total distance.
     """
-    if dispmnt is None:
-        dispmnt = displacement(data=data,
-                               lat_c=lat_c,
-                               lon_c=lon_c,
-                               cluster_c=cluster_c)
+    if displacement is None:
+        displacement = displacements(data=data,
+                                     lat_c=lat_c,
+                                     lon_c=lon_c,
+                                     cluster_c=cluster_c)
 
-    td = sum(dispmnt)
+    td = sum(displacement)
     return td
 
 
