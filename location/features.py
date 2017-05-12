@@ -734,9 +734,6 @@ def to_weekly(data):
     Convert data to weekly data.
     A week starts on Monday with Monday=0, Sunday=6.
 
-    # TO-DO:
-    how to fill up missing data in a week.
-
     Parameters:
     -----------
     data: DataFrame
