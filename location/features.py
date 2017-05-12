@@ -929,17 +929,22 @@ def main():
 
     # compute features
     subsets = config['subsets']
+    location_features = {}
     for k in subsets:
+        features = subsets[k]['features']
         if k == 'daily':
             df = to_daily(data, **subsets[k]['args'])
-            features = subsets[k]['features']
-            ret = _generate_fetures(df, features)
-            ret.to_csv('daily.csv')
+            D = _generate_features(df, features)
         if k == 'weekly':
             df = to_weekly(data)
-            features = subsets[k]['features']
-            ret = _generate_fetures(df, features)
-            ret.to_csv('weekly.csv')
+            D = _generate_features(df, features)
+        if k == 'all':
+            D = _generate_features(data, features)
+        location_features[k] = D
+
+    # store data in yalm format
+    with open('localtest_result.txt', 'w') as f:
+        yaml.dump(location_features, f)
 
 
 if __name__ == '__main__':
