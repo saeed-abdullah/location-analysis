@@ -604,15 +604,8 @@ def test_load_locatoin_data():
 
 
 def test_generate_features():
-    args = {}
-    args['location_data_args'] = {'cluster_c': 'cluster',
-                                  'time_c': 'time',
-                                  'lat_c': 'lat',
-                                  'lon_c': 'lon'}
-    daily_features = {'num_clusters': {'cluster_c': 'cluster'},
-                      'num_trips': {'cluster_c': 'cluster'}}
-    args['subset'] = {'daily': {'args': 'null',
-                                'features': daily_features}}
+    features = {'num_clusters': {'cluster_c': 'cluster'},
+                'num_trips': {'cluster_c': 'cluster'}}
 
     d = [['2015-10-01 05:39:46-04:00', 'dr5xfdt'] +
          list(geohash.decode('dr5xfdt')),
@@ -629,8 +622,16 @@ def test_generate_features():
                     for x in data['time']]
     data = data.set_index('time', drop=False)
     data = data.sort_index()
+
+    D = lf._generate_fetures(data, features)
+
+    assert len(D) == 2
+    assert D['num_trips'] == 1
+    assert D['num_clusters'] == 2
+
     daily_data = lf.to_daily(data)
-    df = lf._generate_fetures(daily_data, daily_features)
+    D = lf._generate_fetures(daily_data, features)
+    df = pd.DataFrame.from_dict(D, orient='index')
     assert len(df) == len(daily_data)
     assert df.index.tolist() == [x[0] for x in daily_data]
     assert 'num_clusters' in df.columns

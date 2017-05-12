@@ -823,7 +823,10 @@ def _load_location_data(path,
 
 def _generate_fetures(data, features):
     """
-    Generate features.
+    Generate features for daily/weekly/all
+    location data.
+    Assume all features computed for daily or
+    weekly data are scalar values.
 
     Parameters:
     -----------
@@ -835,40 +838,50 @@ def _generate_fetures(data, features):
 
     Returns:
     --------
-    df: DataFrame
-        Daily or weekly features.
+    D: dict
+        Features. If the data is daily or weekly
+        data, the key of the dictionary is timestamp
+        and the value if features for each date.
+        If the data is all location data, the dictionary
+        stores the features.
     """
-    feature_func = {'gyration_radius': gyration_radius,
-                    'num_trips': num_trips,
-                    'num_clusters': num_clusters,
-                    'max_dist_between_clusters': max_dist_between_clusters,
-                    'num_clusters': num_clusters,
-                    'displacements': displacements,
-                    'wait_time': wait_time,
-                    'entropy': entropy,
-                    'loc_var': loc_var,
-                    'home_stay': home_stay,
-                    'trans_time': trans_time,
-                    'total_dist': total_dist}
+    feature_func = {'num_trips': num_trips,
+                    'num_clusters': num_clusters}
 
-    df_data = {}
-    for date, curr_data in data:
-        row = {}
-        if len(curr_data) == 0:
-            for f in features:
-                row[f] = np.nan
-        else:
-            for f in features:
-                args = features[f]
-                if args is not None:
-                    f_value = feature_func[f](curr_data, **args)
-                else:
-                    f_value = feature_func[f](curr_data)
-                row[f] = f_value
-        df_data[date] = row
+    # a dictionary to store features
+    D = {}
 
-    df = pd.DataFrame.from_dict(df_data, orient='index')
-    return df
+    # if this a list of dataframe,
+    # that is, if this is daily/weekly data
+    if type(data) is list:
+        # generate features for each day or week
+        for date, curr_data in data:
+            row = {}
+            if len(curr_data) == 0:
+                for f in features:
+                    row[f] = np.nan
+            else:
+                for f in features:
+                    args = features[f]
+                    if args is not None:
+                        f_value = feature_func[f](curr_data, **args)
+                    else:
+                        f_value = feature_func[f](curr_data)
+                    row[f] = f_value
+
+            D[date] = row
+    # if data is a dataframe
+    else:
+        for f in features:
+            args = features[f]
+            if args is not None:
+                f_value = feature_func[f](data, **args)
+            else:
+                f_value = feature_func[f](data)
+
+            D[f] = f_value
+
+    return D
 
 
 def main():
