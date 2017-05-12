@@ -14,6 +14,7 @@ import datetime
 import geohash
 import argparse
 import yaml
+import os
 
 
 def gyration_radius(data,
@@ -907,6 +908,12 @@ def main():
     parser.add_argument('-f', '--file', required=True,
                         help='File path')
 
+    parser.add_argument('-on', '--outputname', default=None,
+                        help='Output file name')
+
+    parser.add_argument('-op', '--outputpath', default='./',
+                        help='Output path')
+
     args = parser.parse_args()
 
     with open(args.config) as f:
@@ -942,8 +949,21 @@ def main():
             D = _generate_features(data, features)
         location_features[k] = D
 
+    # output file name
+    if args.outputname is None:
+        file_name = os.path.basename(args.file)
+        output_name = os.path.splitext(file_name)[0]
+        output_name += '_features.txt'
+    else:
+        output_name = args.outputname
+
+    # output file path
+    if not os.path.isdir(args.outputpath):
+        os.makedirs(args.outputpath)
+
     # store data in yalm format
-    with open('localtest_result.txt', 'w') as f:
+    path_name = '{}/{}'.format(args.outputpath, output_name)
+    with open(path_name, 'w') as f:
         yaml.dump(location_features, f)
 
 
