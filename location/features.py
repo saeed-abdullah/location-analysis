@@ -821,7 +821,7 @@ def _load_location_data(path,
     return df
 
 
-def _generate_fetures(data, features):
+def _generate_features(data, features):
     """
     Generate features for daily/weekly/all
     location data.
@@ -845,8 +845,18 @@ def _generate_fetures(data, features):
         If the data is all location data, the dictionary
         stores the features.
     """
-    feature_func = {'num_trips': num_trips,
-                    'num_clusters': num_clusters}
+    feature_func = {'gyration_radius': gyration_radius,
+                    'num_trips': num_trips,
+                    'num_clusters': num_clusters,
+                    'max_dist_between_clusters': max_dist_between_clusters,
+                    'num_clusters': num_clusters,
+                    'displacements': displacements,
+                    'wait_time': wait_time,
+                    'entropy': entropy,
+                    'loc_var': loc_var,
+                    'home_stay': home_stay,
+                    'trans_time': trans_time,
+                    'total_dist': total_dist}
 
     # a dictionary to store features
     D = {}

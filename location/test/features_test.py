@@ -623,14 +623,14 @@ def test_generate_features():
     data = data.set_index('time', drop=False)
     data = data.sort_index()
 
-    D = lf._generate_fetures(data, features)
+    D = lf._generate_features(data, features)
 
     assert len(D) == 2
     assert D['num_trips'] == 1
     assert D['num_clusters'] == 2
 
     daily_data = lf.to_daily(data)
-    D = lf._generate_fetures(daily_data, features)
+    D = lf._generate_features(daily_data, features)
     df = pd.DataFrame.from_dict(D, orient='index')
     assert len(df) == len(daily_data)
     assert df.index.tolist() == [x[0] for x in daily_data]
