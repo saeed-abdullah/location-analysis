@@ -404,25 +404,25 @@ def test_home_stay():
     assert hs == 1200
 
 
-def test_trans_time():
-    df = pd.DataFrame(columns=['cluster', 'time'])
-    tt = lf.trans_time(df, time_c='time')
-    assert np.isnan(tt)
+# def test_trans_time():
+#     df = pd.DataFrame(columns=['cluster', 'time'])
+#     tt = lf.trans_time(df, time_c='time')
+#     assert np.isnan(tt)
 
-    df = pd.DataFrame(columns=['cluster', 'time'])
-    df['cluster'] = ['dr5xejs', np.nan]
-    df['time'] = [pd.to_datetime('2015-04-14 07:40:00'),
-                  pd.to_datetime('2015-04-14 08:00:00')]
-    tt = lf.trans_time(df, time_c='time')
-    assert tt == 600
+#     df = pd.DataFrame(columns=['cluster', 'time'])
+#     df['cluster'] = ['dr5xejs', np.nan]
+#     df['time'] = [pd.to_datetime('2015-04-14 07:40:00'),
+#                   pd.to_datetime('2015-04-14 08:00:00')]
+#     tt = lf.trans_time(df, time_c='time')
+#     assert tt == 600
 
-    df = pd.DataFrame(columns=['cluster', 'time'])
-    df['cluster'] = ['dr5xejs', np.nan]
-    df['time'] = [pd.to_datetime('2015-04-14 07:40:00'),
-                  pd.to_datetime('2015-04-14 08:00:00')]
-    df = df.set_index('time')
-    tt = lf.trans_time(df)
-    assert tt == 600
+#     df = pd.DataFrame(columns=['cluster', 'time'])
+#     df['cluster'] = ['dr5xejs', np.nan]
+#     df['time'] = [pd.to_datetime('2015-04-14 07:40:00'),
+#                   pd.to_datetime('2015-04-14 08:00:00')]
+#     df = df.set_index('time')
+#     tt = lf.trans_time(df)
+#     assert tt == 600
 
 
 def test_total_dist():
