@@ -474,7 +474,6 @@ def loc_var(data,
 def home_stay(data,
               home_loc,
               cluster_c='cluster',
-              time_c='index',
               wait_time_v=None):
     """
     Compute the time spent at home location.
@@ -492,10 +491,6 @@ def home_stay(data,
         Location cluster column.
         Default value is 'cluster'.
 
-    time_col: str
-        Timestamp column.
-        Default value is 'index'.
-
     wait_time_v: tuple
         Returned values from wait_time().
 
@@ -510,9 +505,7 @@ def home_stay(data,
 
         # compute waitting time if not provided
         if wait_time_v is None:
-            wt, cwt = wait_time(data,
-                                cluster_c=cluster_c,
-                                time_c=time_c)
+            wt, cwt = wait_time(data, cluster_c=cluster_c)
         else:
             wt, cwt = wait_time_v
 
