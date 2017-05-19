@@ -350,6 +350,8 @@ def wait_time(data,
 
 def entropy(data,
             cluster_c='cluster',
+            max_th='15m',
+            min_th='5m',
             wait_time_v=None):
     """
     Calculate entropy, a measure of
@@ -377,8 +379,8 @@ def entropy(data,
     cluster_c: str
         Location cluster column name.
 
-    time_c: str
-        Timestamp column name.
+    max_th, min_th: str
+        Maximum and minimum time threshold.
 
     wait_time_v: tuple
         Values returned by wait_time().
@@ -392,18 +394,16 @@ def entropy(data,
     if len(data) == 0:
         ent = np.nan
     else:
-        if time_c == 'index':
-            time_col = data.index
-        else:
-            time_col = data[time_c]
-
-        total_time = (max(time_col) - min(time_col)).seconds
-
         # compute waitting time is not provided
         if wait_time_v is None:
-            wt, cwt = wait_time(data, cluster_c, time_c)
+            wt, cwt = wait_time(data=data,
+                                cluster_c=cluster_c,
+                                max_th=max_th,
+                                min_th=min_th)
         else:
             wt, cwt = wait_time_v
+
+        total_time = sum(wt)
 
         if len(wt) == 0:
             ent = np.nan
