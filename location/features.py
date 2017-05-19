@@ -249,7 +249,8 @@ def displacements(data,
 
 def wait_time(data,
               cluster_c='cluster',
-              time_c='index'):
+              max_th='15m',
+              min_th='5m'):
     """
     Calculate the waiting time between
     displacements, which is the amount of
@@ -271,84 +272,84 @@ def wait_time(data,
         Cluster id column.
         Defaults to 'cluster'.
 
-    time_c: str
-        Time column.
-        Defaults to 'index', in which
-        case the index is a timeindex series.
+    max_th, min_th: str
+        Maximum and minimum time threshold.
 
     Returns:
     --------
     waittime: list
         List of waiting time in minute.
 
-    cluster_wt: dict
+    wt_dict: dict
         Waiting time for each location cluster.
         {cluster_id: waiting time}
     """
-    data = data.copy()
-    cluster_col = data[cluster_c].values
-    if time_c == 'index':
-        time_col = data.index
-    else:
-        time_col = data[time_c]
-    data = pd.DataFrame()
-    data['time'] = time_col
-    data[cluster_c] = cluster_col
+    wt_dict = {}
     waittime = []
-    if len(data) <= 1:
-        return waittime, {}
+    if len(data) == 0:
+        return waittime, wt_dict
 
-    # compute approximate time spent at each recorded entry
-    data['td'] = ((data[['time']].shift(-1) - data[['time']]) +
-                  (data[['time']] - data[['time']].shift())) / 2
-    data.ix[0, 'td'] = (data.ix[1, 'time'] - data.ix[0, 'time']) / 2
-    l = len(data)
-    data.ix[l-1, 'td'] = (data.ix[l - 1, 'time'] -
-                          data.ix[l - 2, 'time']) / 2
+    data = data[[cluster_c]]
+    data['time'] = data.index
+    data['time_diff'] = data['time'] - data['time'].shift()
+    max_th = pd.to_timedelta(max_th)
+    min_th = pd.to_timedelta(min_th)
 
-    # skip leading empty entries
-    i = 0
-    while i < len(data) and pd.isnull(data.ix[i, cluster_c]):
-        i += 1
-    curr_c = [i]
+    # set the first row to min time threshold
+    data.iloc[0, -1] = min_th
 
-    # merge waiting time if two or more consecutive
-    # locations belong to the same location cluster
-    for p in range(i + 1, l):
-        curr_cluster = data.ix[p, cluster_c]
+    # filter out large time difference
+    data['in_threshold'] = [x <= max_th for x in data['time_diff']]
+    data['time_diff'] = data['time_diff'].apply(
+                            lambda x: max_th if x > max_th else x
+                        )
+
+    # generate wait time
+    curr_stay = 0
+
+    # first row
+    row_iter = data.iterrows()
+    last_idx, last_row = next(row_iter)
+    if not pd.isnull(last_row[cluster_c]):
+        wt_dict[last_row[cluster_c]] = last_row['time_diff'].seconds
+        curr_stay = last_row['time_diff'].seconds
+
+    # second row to last row
+    for idx, row in row_iter:
+        curr_cluster = row[cluster_c]
+        curr_time = row['time_diff']
+
+        # empty cluster id
         if pd.isnull(curr_cluster):
-            if len(curr_c) == 0:
-                continue
-            wt = data.loc[data.index.isin(curr_c), 'td'].sum()
-            waittime.append(wt.seconds)
-            curr_c = []
+            if curr_stay > 0:
+                waittime.append(curr_stay)
+            curr_stay = 0
         else:
-            if len(curr_c) == 0:
-                curr_c.append(p)
-            elif data.ix[curr_c[-1], cluster_c] != curr_cluster:
-                wt = data.loc[data.index.isin(curr_c), 'td'].sum()
-                waittime.append(wt.seconds)
-                curr_c = [p]
+            # add to wait time dictionary
+            if curr_cluster in wt_dict:
+                wt_dict[curr_cluster] += curr_time.seconds
             else:
-                curr_c.append(p)
+                wt_dict[curr_cluster] = curr_time.seconds
 
-    # handle the last row
-    if len(curr_c) > 0:
-        wt = data.loc[data.index.isin(curr_c), 'td'].sum()
-        waittime.append(wt.seconds)
+            # merge same consecutive clutsers
+            if curr_cluster == last_row[cluster_c] and row['in_threshold']:
+                curr_stay += curr_time.seconds
+            else:
+                if curr_stay > 0:
+                    waittime.append(curr_stay)
+                curr_stay = curr_time.seconds
 
-    # compute the time spent at each location
-    cluster_wt = {}
-    grouped = data.groupby(cluster_c)
-    for i, g in grouped:
-        cluster_wt[i] = g['td'].sum().seconds
+        last_row = row
 
-    return waittime, cluster_wt
+    # check for last row
+    if curr_stay > 0:
+        waittime.append(curr_stay)
+
+    return waittime, wt_dict
 
 
 def entropy(data,
             cluster_c='cluster',
-            time_c='index',
             wait_time_v=None):
     """
     Calculate entropy, a measure of

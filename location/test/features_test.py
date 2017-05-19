@@ -188,39 +188,54 @@ def test_displacements():
 
 def test_wait_time():
     df = pd.DataFrame(columns=['cluster', 'time'])
-    wt, cwt = lf.wait_time(df, time_c='time')
+    df = df.set_index('time')
+    wt, cwt = lf.wait_time(df)
     assert len(wt) == 0
     assert len(cwt) == 0
 
     df['cluster'] = ['dr5xejs']
     df['time'] = [pd.to_datetime('2015-04-14 07:46:43')]
-    wt, cwt = lf.wait_time(df, time_c='time')
-    assert len(wt) == 0
+    df = df.set_index('time')
+    wt, cwt = lf.wait_time(df)
+    assert len(wt) == 1
+    assert wt[0] == pytest.approx(300, 0.0001)
 
     df = pd.DataFrame(columns=['cluster', 'time'])
     df['cluster'] = ['dr5xejs', 'dr5xejs']
     df['time'] = [pd.to_datetime('2015-04-14 07:00:00'),
                   pd.to_datetime('2015-04-14 07:20:00')]
-    wt, cwt = lf.wait_time(df, time_c='time')
+    df = df.set_index('time')
+    wt, cwt = lf.wait_time(df, max_th='20m')
     assert len(wt) == 1
-    assert wt[0] == 1200
+    assert wt[0] == pytest.approx(1500, 0.00001)
     assert len(cwt) == 1
     assert 'dr5xejs' in cwt
-    assert cwt['dr5xejs'] == 1200
+    assert cwt['dr5xejs'] == pytest.approx(1500, 0.00001)
 
     df = pd.DataFrame(columns=['cluster', 'time'])
     df['cluster'] = ['dr5xejs', 'dr5xejs', 'dr5xef2']
     df['time'] = [pd.to_datetime('2015-04-14 07:00:00'),
                   pd.to_datetime('2015-04-14 07:20:00'),
                   pd.to_datetime('2015-04-14 07:40:00')]
-    wt, cwt = lf.wait_time(df, time_c='time')
-    assert len(wt) == 2
-    assert wt[0] == 1800, 0.00001
-    assert wt[1] == 600, 0.00001
+    df = df.set_index('time')
+    wt, cwt = lf.wait_time(df)
+    assert len(wt) == 3
+    assert wt[0] == pytest.approx(300, 0.00001)
+    assert wt[1] == pytest.approx(900, 0.00001)
+    assert wt[2] == pytest.approx(900, 0.00001)
     assert len(cwt) == 2
     assert ('dr5xejs' in cwt) and ('dr5xef2' in cwt)
-    assert cwt['dr5xejs'] == 1800
-    assert cwt['dr5xef2'] == 600
+    assert cwt['dr5xejs'] == pytest.approx(1200, 0.00001)
+    assert cwt['dr5xef2'] == pytest.approx(900, 0.00001)
+
+    wt, cwt = lf.wait_time(df, max_th='22m', min_th='3m')
+    assert len(wt) == 2
+    assert wt[0] == pytest.approx(1380, 0.00001)
+    assert wt[1] == pytest.approx(1200, 0.00001)
+    assert len(cwt) == 2
+    assert ('dr5xejs' in cwt) and ('dr5xef2' in cwt)
+    assert cwt['dr5xejs'] == pytest.approx(1380, 0.00001)
+    assert cwt['dr5xef2'] == pytest.approx(1200, 0.00001)
 
     df = pd.DataFrame(columns=['cluster', 'time'])
     df['cluster'] = ['dr5xejs', 'dr5xejs', np.nan, 'dr5xef2']
@@ -228,14 +243,15 @@ def test_wait_time():
                   pd.to_datetime('2015-04-14 07:20:00'),
                   pd.to_datetime('2015-04-14 07:40:00'),
                   pd.to_datetime('2015-04-14 08:00:00')]
-    wt, cwt = lf.wait_time(df, time_c='time')
+    df = df.set_index('time')
+    wt, cwt = lf.wait_time(df, max_th='20m')
     assert len(wt) == 2
-    assert wt[0] == 1800
-    assert wt[1] == 600
+    assert wt[0] == pytest.approx(1500, 0.00001)
+    assert wt[1] == pytest.approx(1200, 0.00001)
     assert len(cwt) == 2
     assert ('dr5xejs' in cwt) and ('dr5xef2' in cwt)
-    assert cwt['dr5xejs'] == 1800
-    assert cwt['dr5xef2'] == 600
+    assert cwt['dr5xejs'] == pytest.approx(1500, 0.00001)
+    assert cwt['dr5xef2'] == pytest.approx(1200, 0.00001)
 
     df = pd.DataFrame(columns=['cluster', 'time'])
     df['cluster'] = ['dr5xejs', 'dr5xejs', 'dr5xef2', 'dr5xef2']
@@ -243,14 +259,17 @@ def test_wait_time():
                   pd.to_datetime('2015-04-14 07:20:00'),
                   pd.to_datetime('2015-04-14 07:40:00'),
                   pd.to_datetime('2015-04-14 08:00:00')]
-    wt, cwt = lf.wait_time(df, time_c='time')
-    assert len(wt) == 2
-    assert wt[0] == 1800
-    assert wt[1] == 1800
+    df = df.set_index('time')
+    wt, cwt = lf.wait_time(df)
+    assert len(wt) == 4
+    assert wt[0] == pytest.approx(300, 0.00001)
+    assert wt[1] == pytest.approx(900, 0.00001)
+    assert wt[2] == pytest.approx(900, 0.00001)
+    assert wt[3] == pytest.approx(900, 0.00001)
     assert len(cwt) == 2
     assert ('dr5xejs' in cwt) and ('dr5xef2' in cwt)
-    assert cwt['dr5xejs'] == 1800
-    assert cwt['dr5xef2'] == 1800
+    assert cwt['dr5xejs'] == pytest.approx(1200, 0.00001)
+    assert cwt['dr5xef2'] == pytest.approx(1800, 0.00001)
 
     df = pd.DataFrame(columns=['cluster', 'time'])
     df['cluster'] = [np.nan, 'dr5xejs',
@@ -262,35 +281,26 @@ def test_wait_time():
                   pd.to_datetime('2015-04-14 07:40:00'),
                   pd.to_datetime('2015-04-14 08:00:00'),
                   pd.to_datetime('2015-04-14 08:10:00')]
-    wt, cwt = lf.wait_time(df, time_c='time')
-    assert len(wt) == 2
-    assert wt[0] == 2040
-    assert wt[1] == 2100
-    assert len(cwt) == 2
-    assert ('dr5xejs' in cwt) and ('dr5xef2' in cwt)
-    assert cwt['dr5xejs'] == 2040
-    assert cwt['dr5xef2'] == 2100
-
-    df = pd.DataFrame(columns=['cluster', 'time'])
-    df['cluster'] = [np.nan, 'dr5xejs',
-                     'dr5xef2', 'dr5xejs',
-                     'dr5xef2', np.nan]
-    df['time'] = [pd.to_datetime('2015-04-14 06:52:00'),
-                  pd.to_datetime('2015-04-14 07:00:00'),
-                  pd.to_datetime('2015-04-14 07:20:00'),
-                  pd.to_datetime('2015-04-14 07:40:00'),
-                  pd.to_datetime('2015-04-14 08:00:00'),
-                  pd.to_datetime('2015-04-14 08:10:00')]
-    wt, cwt = lf.wait_time(df, time_c='time')
+    df = df.set_index('time')
+    wt, cwt = lf.wait_time(df)
     assert len(wt) == 4
-    assert wt[0] == 840
-    assert wt[1] == 1200
-    assert wt[2] == 1200
-    assert wt[3] == 900
+    assert wt[0] == pytest.approx(480, 0.00001)
+    assert wt[1] == pytest.approx(900, 0.00001)
+    assert wt[1] == pytest.approx(900, 0.00001)
+    assert wt[1] == pytest.approx(900, 0.00001)
     assert len(cwt) == 2
     assert ('dr5xejs' in cwt) and ('dr5xef2' in cwt)
-    assert cwt['dr5xejs'] == 2040
-    assert cwt['dr5xef2'] == 2100
+    assert cwt['dr5xejs'] == pytest.approx(1380, 0.00001)
+    assert cwt['dr5xef2'] == pytest.approx(1800, 0.00001)
+
+    wt, cwt = lf.wait_time(df, max_th='20m')
+    assert len(wt) == 2
+    assert wt[0] == pytest.approx(1680, 0.00001)
+    assert wt[1] == pytest.approx(2400, 0.00001)
+    assert len(cwt) == 2
+    assert ('dr5xejs' in cwt) and ('dr5xef2' in cwt)
+    assert cwt['dr5xejs'] == pytest.approx(1680, 0.00001)
+    assert cwt['dr5xef2'] == pytest.approx(2400, 0.00001)
 
     df = pd.DataFrame(columns=['cluster', 'time'])
     df['cluster'] = [np.nan, 'dr5xejs',
@@ -305,14 +315,14 @@ def test_wait_time():
     df = df.set_index('time')
     wt, cwt = lf.wait_time(df)
     assert len(wt) == 4
-    assert wt[0] == 840
-    assert wt[1] == 1200
-    assert wt[2] == 1200
-    assert wt[3] == 900
+    assert wt[0] == pytest.approx(480, 0.00001)
+    assert wt[1] == pytest.approx(900, 0.00001)
+    assert wt[2] == pytest.approx(900, 0.00001)
+    assert wt[3] == pytest.approx(900, 0.00001)
     assert len(cwt) == 2
     assert ('dr5xejs' in cwt) and ('dr5xef2' in cwt)
-    assert cwt['dr5xejs'] == 2040
-    assert cwt['dr5xef2'] == 2100
+    assert cwt['dr5xejs'] == pytest.approx(1380, 0.00001)
+    assert cwt['dr5xef2'] == pytest.approx(1800, 0.00001)
 
 
 def test_entropy():
