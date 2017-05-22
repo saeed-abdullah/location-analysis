@@ -901,6 +901,9 @@ def main():
     """
     Handle command line options.
     """
+    # Disable SettingWithCopyWarning
+    pd.options.mode.chained_assignment = None
+
     parser = argparse.ArgumentParser()
 
     # commond
