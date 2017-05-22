@@ -813,7 +813,7 @@ def _load_location_data(path,
     return df
 
 
-def _generate_features(data, features):
+def _generate_features(data, features, home_loc):
     """
     Generate features for daily/weekly/all
     location data.
@@ -827,6 +827,9 @@ def _generate_features(data, features):
 
     features: dict
         Features and their configurations.
+
+    home_loc: str
+        Home location in geohash.
 
     Returns:
     --------
@@ -865,6 +868,10 @@ def _generate_features(data, features):
             else:
                 for f in features:
                     args = features[f]
+
+                    if f == 'home_stay':
+                        args['home_loc'] = home_loc
+
                     if args is not None:
                         f_value = feature_func[f](curr_data, **args)
                     else:
@@ -876,6 +883,10 @@ def _generate_features(data, features):
     else:
         for f in features:
             args = features[f]
+
+            if f == 'home_stay':
+                args['home_loc'] = home_loc
+
             if args is not None:
                 f_value = feature_func[f](data, **args)
             else:
@@ -928,16 +939,17 @@ def main():
     # compute features
     subsets = config['subsets']
     location_features = {}
+    home_loc = motif.get_home_location(data, sr_col='stay_region')
     for k in subsets:
         features = subsets[k]['features']
         if k == 'daily':
             df = to_daily(data, **subsets[k]['args'])
-            D = _generate_features(df, features)
+            D = _generate_features(df, features, home_loc)
         if k == 'weekly':
             df = to_weekly(data)
-            D = _generate_features(df, features)
+            D = _generate_features(df, features, home_loc)
         if k == 'all':
-            D = _generate_features(data, features)
+            D = _generate_features(data, features, home_loc)
         location_features[k] = D
 
     # output file name

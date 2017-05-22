@@ -14,6 +14,7 @@ from geopy.distance import vincenty
 import math
 import geohash
 from io import StringIO
+import location.motif as mf
 
 
 def test_gyration_radius():
@@ -626,15 +627,16 @@ def test_load_locatoin_data():
 
 def test_generate_features():
     features = {'num_clusters': {'cluster_c': 'cluster'},
-                'num_trips': {'cluster_c': 'cluster'}}
+                'num_trips': {'cluster_c': 'cluster'},
+                'home_stay': {'cluster_c': 'cluster'}}
 
     d = [['2015-10-01 05:39:46-04:00', 'dr5xfdt'] +
          list(geohash.decode('dr5xfdt')),
          ['2015-10-01 17:56:13-04:00', 'dr78psd'] +
          list(geohash.decode('dr78psd')),
-         ['2015-10-02 02:27:54-04:00', 'dr78psd'] +
+         ['2015-10-02 02:20:00-04:00', 'dr78psd'] +
          list(geohash.decode('dr78psd')),
-         ['2015-10-05 02:27:54-04:00', 'dr78psd'] +
+         ['2015-10-05 02:40:00-04:00', 'dr78psd'] +
          list(geohash.decode('dr78psd'))]
     data = pd.DataFrame(d, columns=['time', 'cluster', 'lat', 'lon'])
     data['time'] = [pd.to_datetime(x).
@@ -643,15 +645,17 @@ def test_generate_features():
                     for x in data['time']]
     data = data.set_index('time', drop=False)
     data = data.sort_index()
+    home_loc = mf.get_home_location(data, sr_col='cluster')
 
-    D = lf._generate_features(data, features)
+    D = lf._generate_features(data, features, home_loc)
 
-    assert len(D) == 2
+    assert len(D) == 3
     assert D['num_trips'] == 1
     assert D['num_clusters'] == 2
+    assert D['home_stay'] == lf.home_stay(data, home_loc)
 
     daily_data = lf.to_daily(data)
-    D = lf._generate_features(daily_data, features)
+    D = lf._generate_features(daily_data, features, home_loc)
     df = pd.DataFrame.from_dict(D, orient='index')
     assert len(df) == len(daily_data)
     assert df.index.tolist() == [x[0] for x in daily_data]
