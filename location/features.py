@@ -12,6 +12,9 @@ from collections import Counter
 import pytz
 import datetime
 import geohash
+import argparse
+import yaml
+import os
 
 
 def gyration_radius(data,
@@ -109,21 +112,11 @@ def num_trips(data,
     if len(data) == 0:
         return np.nan
 
-    data = data.reset_index()
+    # location history
+    data = data.loc[data[cluster_c] != data[cluster_c].shift()]
 
-    # previous location
-    p = data.ix[0, cluster_c]
-    n_trip = 0
-
-    for i in range(1, len(data)):
-
-        # current location
-        c = data.ix[i, cluster_c]
-        if p == c:
-            continue
-        else:
-            n_trip += 1
-            p = c
+    # num_trips
+    n_trip = len(data) - 1
 
     return n_trip
 
@@ -163,11 +156,8 @@ def max_dist_between_clusters(data,
         return 0
 
     # get list of different gps coordinates
-    locations_coord = []
-    for l in locations:
-        df = data.loc[data[cluster_c] == l].reset_index()
-        gps = (df.ix[0, lat_c], df.ix[0, lon_c])
-        locations_coord.append(gps)
+    locations_coord = [geohash.decode(x)
+                       for x in locations]
 
     # find maximum distance
     max_dist = 0
@@ -206,10 +196,10 @@ def num_clusters(data, cluster_c='cluster'):
         return n
 
 
-def displacement(data,
-                 lat_c='latitude',
-                 lon_c='longitude',
-                 cluster_c='cluster'):
+def displacements(data,
+                  lat_c='latitude',
+                  lon_c='longitude',
+                  cluster_c='cluster'):
     """
     Calculate the displacement of the location data,
     which is list of distances traveled from one location
@@ -259,7 +249,8 @@ def displacement(data,
 
 def wait_time(data,
               cluster_c='cluster',
-              time_c='index'):
+              max_th='15m',
+              min_th='5m'):
     """
     Calculate the waiting time between
     displacements, which is the amount of
@@ -281,84 +272,86 @@ def wait_time(data,
         Cluster id column.
         Defaults to 'cluster'.
 
-    time_c: str
-        Time column.
-        Defaults to 'index', in which
-        case the index is a timeindex series.
+    max_th, min_th: str
+        Maximum and minimum time threshold.
 
     Returns:
     --------
     waittime: list
         List of waiting time in minute.
 
-    cluster_wt: dict
+    wt_dict: dict
         Waiting time for each location cluster.
         {cluster_id: waiting time}
     """
-    data = data.copy()
-    cluster_col = data[cluster_c].values
-    if time_c == 'index':
-        time_col = data.index
-    else:
-        time_col = data[time_c]
-    data = pd.DataFrame()
-    data['time'] = time_col
-    data[cluster_c] = cluster_col
+    wt_dict = {}
     waittime = []
-    if len(data) <= 1:
-        return waittime, {}
+    if len(data) == 0:
+        return waittime, wt_dict
 
-    # compute approximate time spent at each recorded entry
-    data['td'] = ((data[['time']].shift(-1) - data[['time']]) +
-                  (data[['time']] - data[['time']].shift())) / 2
-    data.ix[0, 'td'] = (data.ix[1, 'time'] - data.ix[0, 'time']) / 2
-    l = len(data)
-    data.ix[l-1, 'td'] = (data.ix[l - 1, 'time'] -
-                          data.ix[l - 2, 'time']) / 2
+    data = data[[cluster_c]]
+    data['time'] = data.index
+    data['time_diff'] = data['time'] - data['time'].shift()
+    max_th = pd.to_timedelta(max_th)
+    min_th = pd.to_timedelta(min_th)
 
-    # skip leading empty entries
-    i = 0
-    while i < len(data) and pd.isnull(data.ix[i, cluster_c]):
-        i += 1
-    curr_c = [i]
+    # set the first row to min time threshold
+    data.iloc[0, -1] = min_th
 
-    # merge waiting time if two or more consecutive
-    # locations belong to the same location cluster
-    for p in range(i + 1, l):
-        curr_cluster = data.ix[p, cluster_c]
+    # filter out large time difference
+    data['in_threshold'] = [x <= max_th for x in data['time_diff']]
+    data['time_diff'] = data['time_diff'].apply(
+                            lambda x: max_th if x > max_th else x
+                        )
+
+    # generate wait time
+    curr_stay = 0
+
+    # first row
+    row_iter = data.iterrows()
+    last_idx, last_row = next(row_iter)
+    if not pd.isnull(last_row[cluster_c]):
+        wt_dict[last_row[cluster_c]] = last_row['time_diff'].seconds
+        curr_stay = last_row['time_diff'].seconds
+
+    # second row to last row
+    for idx, row in row_iter:
+        curr_cluster = row[cluster_c]
+        curr_time = row['time_diff']
+
+        # empty cluster id
         if pd.isnull(curr_cluster):
-            if len(curr_c) == 0:
-                continue
-            wt = data.loc[data.index.isin(curr_c), 'td'].sum()
-            waittime.append(wt.seconds)
-            curr_c = []
+            if curr_stay > 0:
+                waittime.append(curr_stay)
+            curr_stay = 0
         else:
-            if len(curr_c) == 0:
-                curr_c.append(p)
-            elif data.ix[curr_c[-1], cluster_c] != curr_cluster:
-                wt = data.loc[data.index.isin(curr_c), 'td'].sum()
-                waittime.append(wt.seconds)
-                curr_c = [p]
+            # add to wait time dictionary
+            if curr_cluster in wt_dict:
+                wt_dict[curr_cluster] += curr_time.seconds
             else:
-                curr_c.append(p)
+                wt_dict[curr_cluster] = curr_time.seconds
 
-    # handle the last row
-    if len(curr_c) > 0:
-        wt = data.loc[data.index.isin(curr_c), 'td'].sum()
-        waittime.append(wt.seconds)
+            # merge same consecutive clutsers
+            if curr_cluster == last_row[cluster_c] and row['in_threshold']:
+                curr_stay += curr_time.seconds
+            else:
+                if curr_stay > 0:
+                    waittime.append(curr_stay)
+                curr_stay = curr_time.seconds
 
-    # compute the time spent at each location
-    cluster_wt = {}
-    grouped = data.groupby(cluster_c)
-    for i, g in grouped:
-        cluster_wt[i] = g['td'].sum().seconds
+        last_row = row
 
-    return waittime, cluster_wt
+    # check for last row
+    if curr_stay > 0:
+        waittime.append(curr_stay)
+
+    return waittime, wt_dict
 
 
 def entropy(data,
             cluster_c='cluster',
-            time_c='index',
+            max_th='15m',
+            min_th='5m',
             wait_time_v=None):
     """
     Calculate entropy, a measure of
@@ -386,8 +379,8 @@ def entropy(data,
     cluster_c: str
         Location cluster column name.
 
-    time_c: str
-        Timestamp column name.
+    max_th, min_th: str
+        Maximum and minimum time threshold.
 
     wait_time_v: tuple
         Values returned by wait_time().
@@ -401,18 +394,16 @@ def entropy(data,
     if len(data) == 0:
         ent = np.nan
     else:
-        if time_c == 'index':
-            time_col = data.index
-        else:
-            time_col = data[time_c]
-
-        total_time = (max(time_col) - min(time_col)).seconds
-
         # compute waitting time is not provided
         if wait_time_v is None:
-            wt, cwt = wait_time(data, cluster_c, time_c)
+            wt, cwt = wait_time(data=data,
+                                cluster_c=cluster_c,
+                                max_th=max_th,
+                                min_th=min_th)
         else:
             wt, cwt = wait_time_v
+
+        total_time = sum(wt)
 
         if len(wt) == 0:
             ent = np.nan
@@ -483,7 +474,6 @@ def loc_var(data,
 def home_stay(data,
               home_loc,
               cluster_c='cluster',
-              time_c='index',
               wait_time_v=None):
     """
     Compute the time spent at home location.
@@ -501,10 +491,6 @@ def home_stay(data,
         Location cluster column.
         Default value is 'cluster'.
 
-    time_col: str
-        Timestamp column.
-        Default value is 'index'.
-
     wait_time_v: tuple
         Returned values from wait_time().
 
@@ -519,9 +505,7 @@ def home_stay(data,
 
         # compute waitting time if not provided
         if wait_time_v is None:
-            wt, cwt = wait_time(data,
-                                cluster_c=cluster_c,
-                                time_c=time_c)
+            wt, cwt = wait_time(data, cluster_c=cluster_c)
         else:
             wt, cwt = wait_time_v
 
@@ -533,66 +517,66 @@ def home_stay(data,
     return hs
 
 
-def trans_time(data,
-               cluster_c='cluster',
-               time_c='index',
-               wait_time_v=None):
-    """
-    Calculate the total time spent in travelling
-    in seconds. This calculated by substracting the waitting
-    time from the total time.
+# def trans_time(data,
+#                cluster_c='cluster',
+#                time_c='index',
+#                wait_time_v=None):
+#     """
+#     Calculate the total time spent in travelling
+#     in seconds. This calculated by substracting the waitting
+#     time from the total time.
 
-    Parameters:
-    -----------
-    data: dataframe
-        Location data.
+#     Parameters:
+#     -----------
+#     data: dataframe
+#         Location data.
 
-    cluster_c: str
-        Cluster id column.
-        Defaults to 'cluster'.
+#     cluster_c: str
+#         Cluster id column.
+#         Defaults to 'cluster'.
 
-    time_c: str
-        Time column.
-        Defaults to 'index', in which
-        case the index is a timeindex series.
+#     time_c: str
+#         Time column.
+#         Defaults to 'index', in which
+#         case the index is a timeindex series.
 
-    wait_time_v: tuple
-        Returned values from wait_time().
+#     wait_time_v: tuple
+#         Returned values from wait_time().
 
-    Returns:
-    --------
-    tt: float
-        Transition time.
-    """
-    # compute waitting time if not provided
-    if wait_time_v is None:
-        wt, cwt = wait_time(data,
-                            cluster_c=cluster_c,
-                            time_c=time_c)
-    else:
-        wt, cwt = wait_time_v
+#     Returns:
+#     --------
+#     tt: float
+#         Transition time.
+#     """
+#     # compute waitting time if not provided
+#     if wait_time_v is None:
+#         wt, cwt = wait_time(data,
+#                             cluster_c=cluster_c,
+#                             time_c=time_c)
+#     else:
+#         wt, cwt = wait_time_v
 
-    if len(wt) == 0:
-        tt = np.nan
-    else:
-        if time_c == 'index':
-            time_col = data.index
-        else:
-            time_col = data[time_c]
+#     if len(wt) == 0:
+#         tt = np.nan
+#     else:
+#         if time_c == 'index':
+#             time_col = data.index
+#         else:
+#             time_col = data[time_c]
 
-        # compute total time and subtract waitting time
-        # from it
-        total_time = (max(time_col) - min(time_col)).seconds
-        tt = total_time - sum(wt)
+#         # compute total time and subtract waitting time
+#         # from it
+#         total_time = (max(time_col) - min(time_col)).seconds
+#         tt = total_time - sum(wt)
 
-    return tt
+#     return tt
 
 
 def total_dist(data,
                cluster_c='cluster',
                lat_c='latitude',
                lon_c='longitude',
-               dispmnt=None):
+               displacement=None):
     """
     The sum of travel distance in meters.
     This value computed by taking the sum
@@ -612,7 +596,7 @@ def total_dist(data,
         Latidue and longitude of the cluster
         locations.
 
-    dispmnt: list
+    displacement: list
         List of displacements returned by displacement().
 
     Returns:
@@ -620,13 +604,13 @@ def total_dist(data,
     td: float
         Total distance.
     """
-    if dispmnt is None:
-        dispmnt = displacement(data=data,
-                               lat_c=lat_c,
-                               lon_c=lon_c,
-                               cluster_c=cluster_c)
+    if displacement is None:
+        displacement = displacements(data=data,
+                                     lat_c=lat_c,
+                                     lon_c=lon_c,
+                                     cluster_c=cluster_c)
 
-    td = sum(dispmnt)
+    td = sum(displacement)
     return td
 
 
@@ -677,3 +661,317 @@ def convert_and_append_geohash(data,
         data.loc[idx, lat_c] = lat
         data.loc[idx, lon_c] = lon
     return data
+
+
+def to_daily(data, start_hour=0):
+    """
+    Generate daily data.
+    Data are generated between the earliest
+    and latest dates. If there is no data
+    in a specific day, the data for that day
+    is an empty DataFrame.
+
+    Parameters:
+    -----------
+    data: DataFrame
+        Hourly data.
+
+    start_hour: int
+        Start of the day.
+        Default is 0.
+
+    Retuens:
+    --------
+    daily_data: list of DataFrame
+        Daily data. [(datetime, dataframe), ...]
+    """
+    if len(data) == 0:
+        return []
+
+    one_day = pd.to_timedelta('1d')
+
+    # start time
+    start_time = data.index[0].replace(microsecond=0,
+                                       second=0,
+                                       minute=0,
+                                       hour=start_hour)
+    if data.index[0] < start_time:
+        start_time -= one_day
+
+    # end time
+    end_time = data.index[-1].replace(microsecond=0,
+                                      second=0,
+                                      minute=0,
+                                      hour=start_hour)
+    if data.index[-1] < end_time:
+        end_time -= one_day
+
+    # generate daily data
+    t = start_time
+    daily_data = []
+
+    while t <= end_time:
+
+        # extract data within current day
+        next_t = t + one_day
+        df = data.loc[(data.index >= t) & (data.index < next_t)]
+        daily_data.append((t, df))
+
+        # update pointer
+        t = next_t
+
+    return daily_data
+
+
+def to_weekly(data):
+    """
+    Convert data to weekly data.
+    A week starts on Monday with Monday=0, Sunday=6.
+
+    Parameters:
+    -----------
+    data: DataFrame
+        Data to be processed.
+
+    Returns:
+    --------
+    weekly: list
+        A list of weekly data with (datetime.date, dataframe).
+    """
+
+    weekly = []
+
+    if len(data) == 0:
+        return weekly
+
+    # start time
+    start_t = data.index[0]
+    while start_t.weekday() > 0:
+        start_t -= pd.to_timedelta('1d')
+    start_t = start_t.replace(microsecond=0,
+                              second=0,
+                              minute=0,
+                              hour=0)
+
+    # end time
+    end_t = data.index[-1]
+    while end_t.weekday() > 0:
+        end_t -= pd.to_timedelta('1d')
+    end_t = end_t.replace(microsecond=0,
+                          second=0,
+                          minute=0,
+                          hour=0)
+
+    # weekly data
+    p = start_t
+    while p <= end_t:
+
+        next_week = p + pd.to_timedelta('7d')
+        df = data.loc[(data.index >= p) & (data.index < next_week)]
+        weekly.append((p, df))
+
+        # update pointer
+        p = next_week
+
+    return weekly
+
+
+def _load_location_data(path,
+                        time_c,
+                        lat_c,
+                        lon_c,
+                        cluster_c,
+                        local_tz='UTC',
+                        convert_tz='America/New_York'):
+    """
+    Load location data, convert time column to DataTime objects
+    and set it as index.
+
+    Parameters:
+    -----------
+    path: str
+        File path.
+
+    time_c, lat_c, lon_c, cluster_c: str
+        Time, latitude, longitidue, cluster columns.
+
+    local_tz, convert_tz: str
+        Local and target timezones. Defaut values are
+        'UTC' and 'America/New_York'.
+
+    Returns:
+    --------
+    df: DataFrame
+        Locataion data.
+    """
+    df = pd.read_csv(path, usecols=[time_c, lat_c, lon_c, cluster_c])
+    df[time_c] = pd.to_datetime(df[time_c])
+    df = df.set_index(time_c, drop=False)
+    df = df.tz_localize(local_tz)
+    df = df.tz_convert(convert_tz)
+    df = df.sort_index()
+    return df
+
+
+def _generate_features(data, features, home_loc):
+    """
+    Generate features for daily/weekly/all
+    location data.
+    Assume all features computed for daily or
+    weekly data are scalar values.
+
+    Parameters:
+    -----------
+    data: list of DataFrame
+        Daily or weekly location data.
+
+    features: dict
+        Features and their configurations.
+
+    home_loc: str
+        Home location in geohash.
+
+    Returns:
+    --------
+    D: dict
+        Features. If the data is daily or weekly
+        data, the key of the dictionary is timestamp
+        and the value if features for each date.
+        If the data is all location data, the dictionary
+        stores the features.
+    """
+    feature_func = {'gyration_radius': gyration_radius,
+                    'num_trips': num_trips,
+                    'num_clusters': num_clusters,
+                    'max_dist_between_clusters': max_dist_between_clusters,
+                    'num_clusters': num_clusters,
+                    'displacements': displacements,
+                    'wait_time': wait_time,
+                    'entropy': entropy,
+                    'loc_var': loc_var,
+                    'home_stay': home_stay,
+                    # 'trans_time': trans_time,
+                    'total_dist': total_dist}
+
+    # a dictionary to store features
+    D = {}
+
+    # if this a list of dataframe,
+    # that is, if this is daily/weekly data
+    if type(data) is list:
+        # generate features for each day or week
+        for date, curr_data in data:
+            row = {}
+            if len(curr_data) == 0:
+                for f in features:
+                    row[f] = np.nan
+            else:
+                for f in features:
+                    args = features[f]
+
+                    if f == 'home_stay':
+                        args['home_loc'] = home_loc
+
+                    if args is not None:
+                        f_value = feature_func[f](curr_data, **args)
+                    else:
+                        f_value = feature_func[f](curr_data)
+                    row[f] = f_value
+
+            D[date] = row
+    # if data is a dataframe
+    else:
+        for f in features:
+            args = features[f]
+
+            if f == 'home_stay':
+                args['home_loc'] = home_loc
+
+            if args is not None:
+                f_value = feature_func[f](data, **args)
+            else:
+                f_value = feature_func[f](data)
+
+            D[f] = f_value
+
+    return D
+
+
+def main():
+    """
+    Handle command line options.
+    """
+    # Disable SettingWithCopyWarning
+    pd.options.mode.chained_assignment = None
+
+    parser = argparse.ArgumentParser()
+
+    # commond
+    parser.add_argument('-c', '--config', required=True,
+                        help='JSON config file path')
+
+    parser.add_argument('-f', '--file', required=True,
+                        help='File path')
+
+    parser.add_argument('-on', '--outputname', default=None,
+                        help='Output file name')
+
+    parser.add_argument('-op', '--outputpath', default='./',
+                        help='Output path')
+
+    args = parser.parse_args()
+
+    with open(args.config) as f:
+        config = yaml.load(f)
+
+    loc_config = config['location_data_args']
+    cluster_c = loc_config['cluster_c']
+    lat_c = loc_config['lat_c']
+    lon_c = loc_config['lon_c']
+    time_c = loc_config['time_c']
+
+    # read location data
+    data = _load_location_data(args.file, **loc_config)
+
+    # preprocess data
+    data = convert_and_append_geohash(data=data,
+                                      cluster_c=loc_config['cluster_c'],
+                                      lat_c=loc_config['lat_c'],
+                                      lon_c=loc_config['lon_c'])
+
+    # compute features
+    subsets = config['subsets']
+    location_features = {}
+    home_loc = motif.get_home_location(data, sr_col='stay_region')
+    for k in subsets:
+        features = subsets[k]['features']
+        if k == 'daily':
+            df = to_daily(data, **subsets[k]['args'])
+            D = _generate_features(df, features, home_loc)
+        if k == 'weekly':
+            df = to_weekly(data)
+            D = _generate_features(df, features, home_loc)
+        if k == 'all':
+            D = _generate_features(data, features, home_loc)
+        location_features[k] = D
+
+    # output file name
+    if args.outputname is None:
+        file_name = os.path.basename(args.file)
+        output_name = os.path.splitext(file_name)[0]
+        output_name += '_features.txt'
+    else:
+        output_name = args.outputname
+
+    # output file path
+    if not os.path.isdir(args.outputpath):
+        os.makedirs(args.outputpath)
+
+    # store data in yalm format
+    path_name = '{}/{}'.format(args.outputpath, output_name)
+    with open(path_name, 'w') as f:
+        yaml.dump(location_features, f)
+
+
+if __name__ == '__main__':
+    main()
