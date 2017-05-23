@@ -26,3 +26,11 @@ var/
 
 # pytest
 .cache/
+
+# test data
+*.csv
+localtest_*
+
+# jupyter notebook files
+*.ipynb
+location/.ipynb_checkpoints/
